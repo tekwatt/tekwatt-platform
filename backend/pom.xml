@@ -12,5 +12,8 @@
   <artifactId>backend</artifactId>
   <packaging>pom</packaging>
   <name>TekWatt Backend</name>
-</project>
 
+  <modules>
+    <module>api-gateway</module>
+  </modules>
+</project>
