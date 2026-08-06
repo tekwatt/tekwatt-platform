@@ -21,5 +21,6 @@
     <module>organization-service</module>
     <module>charger-service</module>
     <module>connector-service</module>
+    <module>charging-session-service</module>
   </modules>
 </project>
