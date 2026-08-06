@@ -9,3 +9,4 @@ spring:
     hibernate.ddl-auto: validate
 server.port: ${SERVER_PORT:8096}
 management.endpoints.web.exposure.include: health,info
+tekwatt.ocpp.gateway-url: ${OCPP_GATEWAY_URL:http://localhost:8094}

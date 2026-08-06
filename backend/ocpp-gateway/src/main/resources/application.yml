@@ -10,3 +10,4 @@ spring:
 server.port: ${SERVER_PORT:8094}
 tekwatt.ocpp.shared-key: ${OCPP_SHARED_KEY:}
 management.endpoints.web.exposure.include: health,info
+tekwatt.firmware.service-url: ${FIRMWARE_SERVICE_URL:http://localhost:8096}

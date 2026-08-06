@@ -1,0 +1,1 @@
+package com.tekwatt.ocpp.dto;import jakarta.validation.constraints.*;import java.time.Instant;import java.util.UUID;public record FirmwareCommandRequest(@NotNull UUID jobId,@NotBlank String stationId,@NotBlank@Pattern(regexp="ocpp1\\.6|ocpp2\\.0\\.1")String ocppVersion,@NotBlank String location,@NotNull Instant retrieveDate,String checksum,String signature){}

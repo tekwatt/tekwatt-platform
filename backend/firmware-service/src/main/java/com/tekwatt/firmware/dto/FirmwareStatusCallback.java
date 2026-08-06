@@ -1,0 +1,1 @@
+package com.tekwatt.firmware.dto;import jakarta.validation.constraints.*;import java.util.UUID;public record FirmwareStatusCallback(@NotNull UUID chargerId,@NotBlank String status,@Size(max=1000)String statusInfo){}
