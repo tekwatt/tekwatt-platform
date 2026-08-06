@@ -46,6 +46,10 @@ spring:
               uri: ${BILLING_SERVICE_URL:http://localhost:8090}
               predicates:
                 - Path=/api/v1/bills/**
+            - id: invoice-service
+              uri: ${INVOICE_SERVICE_URL:http://localhost:8091}
+              predicates:
+                - Path=/api/v1/invoices/**
 
 server:
   port: ${SERVER_PORT:8080}

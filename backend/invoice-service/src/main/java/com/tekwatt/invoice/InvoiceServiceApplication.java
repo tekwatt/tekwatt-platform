@@ -1,0 +1,1 @@
+package com.tekwatt.invoice;import org.springframework.boot.SpringApplication;import org.springframework.boot.autoconfigure.SpringBootApplication;@SpringBootApplication public class InvoiceServiceApplication{public static void main(String[]a){SpringApplication.run(InvoiceServiceApplication.class,a);}}
