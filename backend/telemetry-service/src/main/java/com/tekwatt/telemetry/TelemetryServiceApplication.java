@@ -1,0 +1,1 @@
+package com.tekwatt.telemetry;import org.springframework.boot.SpringApplication;import org.springframework.boot.autoconfigure.SpringBootApplication;@SpringBootApplication public class TelemetryServiceApplication{public static void main(String[]a){SpringApplication.run(TelemetryServiceApplication.class,a);}}

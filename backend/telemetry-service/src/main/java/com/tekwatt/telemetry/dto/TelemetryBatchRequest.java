@@ -1,0 +1,1 @@
+package com.tekwatt.telemetry.dto;import jakarta.validation.Valid;import jakarta.validation.constraints.*;import java.util.List;public record TelemetryBatchRequest(@NotEmpty@Size(max=1000)List<@Valid TelemetryRequest> readings){}

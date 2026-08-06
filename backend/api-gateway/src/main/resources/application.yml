@@ -66,6 +66,10 @@ spring:
               uri: ${OCPP_GATEWAY_WS_URL:ws://localhost:8094}
               predicates:
                 - Path=/ocpp/**
+            - id: telemetry-service
+              uri: ${TELEMETRY_SERVICE_URL:http://localhost:8095}
+              predicates:
+                - Path=/api/v1/telemetry/**
 
 server:
   port: ${SERVER_PORT:8080}

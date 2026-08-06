@@ -29,5 +29,6 @@
     <module>payment-service</module>
     <module>notification-service</module>
     <module>ocpp-gateway</module>
+    <module>telemetry-service</module>
   </modules>
 </project>
