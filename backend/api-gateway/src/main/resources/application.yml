@@ -74,6 +74,10 @@ spring:
               uri: ${FIRMWARE_SERVICE_URL:http://localhost:8096}
               predicates:
                 - Path=/api/v1/firmware/**
+            - id: audit-service
+              uri: ${AUDIT_SERVICE_URL:http://localhost:8097}
+              predicates:
+                - Path=/api/v1/audit-events/**
 
 server:
   port: ${SERVER_PORT:8080}

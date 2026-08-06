@@ -31,5 +31,6 @@
     <module>ocpp-gateway</module>
     <module>telemetry-service</module>
     <module>firmware-service</module>
+    <module>audit-service</module>
   </modules>
 </project>
