@@ -1,0 +1,2 @@
+package com.tekwatt.organization.dto;import com.tekwatt.organization.entity.*;import java.time.Instant;import java.util.UUID;
+public record OrganizationResponse(UUID id,UUID tenantId,UUID parentId,String name,String code,OrganizationStatus status,Instant createdAt,Instant updatedAt){public static OrganizationResponse from(Organization o){return new OrganizationResponse(o.getId(),o.getTenantId(),o.getParentId(),o.getName(),o.getCode(),o.getStatus(),o.getCreatedAt(),o.getUpdatedAt());}}

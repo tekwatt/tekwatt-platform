@@ -1,0 +1,2 @@
+CREATE TABLE organizations(id UUID PRIMARY KEY,tenant_id UUID NOT NULL,parent_id UUID REFERENCES organizations(id),name VARCHAR(150) NOT NULL,code VARCHAR(60) NOT NULL,status VARCHAR(20) NOT NULL,created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT uk_organizations_tenant_code UNIQUE(tenant_id,code));
+CREATE INDEX idx_organizations_tenant_id ON organizations(tenant_id);CREATE INDEX idx_organizations_parent_id ON organizations(parent_id);

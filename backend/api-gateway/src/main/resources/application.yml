@@ -18,6 +18,10 @@ spring:
               uri: ${TENANT_SERVICE_URL:http://localhost:8085}
               predicates:
                 - Path=/api/v1/tenants/**
+            - id: organization-service
+              uri: ${ORGANIZATION_SERVICE_URL:http://localhost:8086}
+              predicates:
+                - Path=/api/v1/organizations/**
             - id: charger-service
               uri: ${CHARGER_SERVICE_URL:http://localhost:8083}
               predicates:

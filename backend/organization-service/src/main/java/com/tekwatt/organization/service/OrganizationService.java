@@ -1,0 +1,12 @@
+package com.tekwatt.organization.service;
+import com.tekwatt.organization.dto.*;import com.tekwatt.organization.entity.Organization;import com.tekwatt.organization.repository.OrganizationRepository;import java.util.UUID;import org.springframework.data.domain.*;import org.springframework.http.HttpStatus;import org.springframework.stereotype.Service;import org.springframework.transaction.annotation.Transactional;import org.springframework.web.server.ResponseStatusException;
+@Service public class OrganizationService{
+ private final OrganizationRepository repo;public OrganizationService(OrganizationRepository repo){this.repo=repo;}
+ @Transactional public OrganizationResponse create(OrganizationRequest r){String code=r.code().toUpperCase();if(repo.existsByTenantIdAndCodeIgnoreCase(r.tenantId(),code))throw new ResponseStatusException(HttpStatus.CONFLICT,"Organization code already exists for tenant");validateParent(r.tenantId(),r.parentId(),null);return OrganizationResponse.from(repo.save(new Organization(r.tenantId(),r.parentId(),r.name().trim(),code)));}
+ @Transactional(readOnly=true) public OrganizationResponse get(UUID id){return OrganizationResponse.from(find(id));}
+ @Transactional(readOnly=true) public Page<OrganizationResponse> list(UUID tenantId,Pageable p){return (tenantId==null?repo.findAll(p):repo.findByTenantId(tenantId,p)).map(OrganizationResponse::from);}
+ @Transactional public OrganizationResponse update(UUID id,OrganizationRequest r){Organization o=find(id);if(!o.getTenantId().equals(r.tenantId()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Tenant cannot be changed");String code=r.code().toUpperCase();if(repo.existsByTenantIdAndCodeIgnoreCaseAndIdNot(r.tenantId(),code,id))throw new ResponseStatusException(HttpStatus.CONFLICT,"Organization code already exists for tenant");validateParent(r.tenantId(),r.parentId(),id);o.update(r.parentId(),r.name().trim(),code);return OrganizationResponse.from(o);}
+ @Transactional public void deactivate(UUID id){find(id).deactivate();}
+ private void validateParent(UUID tenantId,UUID parentId,UUID self){if(parentId==null)return;if(parentId.equals(self))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Organization cannot be its own parent");Organization parent=find(parentId);if(!parent.getTenantId().equals(tenantId))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Parent must belong to same tenant");}
+ private Organization find(UUID id){return repo.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Organization not found"));}
+}

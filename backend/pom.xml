@@ -18,5 +18,6 @@
     <module>auth-service</module>
     <module>user-service</module>
     <module>tenant-service</module>
+    <module>organization-service</module>
   </modules>
 </project>
