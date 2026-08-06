@@ -2,7 +2,7 @@ spring:
   application:
     name: tenant-service
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/tekwatt_tenants}
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/tekwatt_tenants?serverTimezone=UTC}
     username: ${DATABASE_USERNAME:tekwatt}
     password: ${DATABASE_PASSWORD:change-me}
   jpa:

@@ -1,6 +1,6 @@
 # Charger Service
 
-Manages the charger inventory, operational status, and heartbeat timestamps. It runs on port `8083` and stores data in the `tekwatt_chargers` PostgreSQL database.
+Manages the charger inventory, operational status, and heartbeat timestamps. It runs on port `8083` and stores data in the `tekwatt_chargers` MySQL database.
 
 ## Endpoints
 
