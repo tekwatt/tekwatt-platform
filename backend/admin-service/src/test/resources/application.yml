@@ -1,0 +1,10 @@
+spring.datasource.url: jdbc:h2:mem:admin;MODE=MySQL;DB_CLOSE_DELAY=-1
+spring.datasource.username: sa
+spring.datasource.password:
+spring.jpa.hibernate.ddl-auto: validate
+spring.jpa.properties.hibernate.type.preferred_uuid_jdbc_type: BINARY
+tekwatt.services:
+  tenant: http://localhost:8085
+  user: http://localhost:8082
+  charger: http://localhost:8083
+  ocpp: http://localhost:8094

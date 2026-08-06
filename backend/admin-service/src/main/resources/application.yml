@@ -1,0 +1,16 @@
+spring:
+  application.name: admin-service
+  datasource:
+    url: ${ADMIN_DATABASE_URL:jdbc:mysql://localhost:3306/tekwatt_admin?serverTimezone=UTC}
+    username: ${DATABASE_USERNAME:tekwatt}
+    password: ${DATABASE_PASSWORD:change-me}
+  jpa:
+    open-in-view: false
+    hibernate.ddl-auto: validate
+server.port: ${SERVER_PORT:8100}
+management.endpoints.web.exposure.include: health,info
+tekwatt.services:
+  tenant: ${TENANT_SERVICE_URL:http://localhost:8085}
+  user: ${USER_SERVICE_URL:http://localhost:8082}
+  charger: ${CHARGER_SERVICE_URL:http://localhost:8083}
+  ocpp: ${OCPP_GATEWAY_URL:http://localhost:8094}

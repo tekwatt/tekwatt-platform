@@ -86,6 +86,10 @@ spring:
               uri: ${REPORTING_SERVICE_URL:http://localhost:8099}
               predicates:
                 - Path=/api/v1/reports/**
+            - id: admin-service
+              uri: ${ADMIN_SERVICE_URL:http://localhost:8100}
+              predicates:
+                - Path=/api/v1/admin/**
 
 server:
   port: ${SERVER_PORT:8080}

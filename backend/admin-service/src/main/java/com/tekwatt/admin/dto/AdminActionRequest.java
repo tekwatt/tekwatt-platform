@@ -1,0 +1,1 @@
+package com.tekwatt.admin.dto;import com.fasterxml.jackson.databind.JsonNode;import com.tekwatt.admin.entity.AdminActionType;import jakarta.validation.constraints.*;import java.util.UUID;public record AdminActionRequest(@NotNull UUID actorId,@NotNull AdminActionType actionType,@NotBlank@Size(max=100)String targetId,@NotBlank@Size(max=500)String reason,JsonNode payload){}

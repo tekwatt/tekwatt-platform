@@ -34,5 +34,6 @@
     <module>audit-service</module>
     <module>analytics-service</module>
     <module>reporting-service</module>
+    <module>admin-service</module>
   </modules>
 </project>

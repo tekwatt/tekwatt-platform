@@ -1,0 +1,1 @@
+package com.tekwatt.admin.entity;public enum AdminActionType{TENANT_STATUS_CHANGE,CHARGER_STATUS_CHANGE,USER_DEACTIVATE,CHARGER_HEARTBEAT}

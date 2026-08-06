@@ -1,0 +1,1 @@
+package com.tekwatt.admin.repository;import com.tekwatt.admin.entity.AdminAction;import java.util.UUID;import org.springframework.data.domain.*;import org.springframework.data.jpa.repository.JpaRepository;public interface AdminActionRepository extends JpaRepository<AdminAction,UUID>{Page<AdminAction>findByActorIdOrderByCreatedAtDesc(UUID actorId,Pageable pageable);}
