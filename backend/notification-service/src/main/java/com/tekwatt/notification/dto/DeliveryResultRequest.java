@@ -1,0 +1,1 @@
+package com.tekwatt.notification.dto;import jakarta.validation.constraints.*;public record DeliveryResultRequest(@NotNull Boolean successful,@Size(max=150)String providerMessageId,@Size(max=1000)String error){}
