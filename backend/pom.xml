@@ -32,5 +32,6 @@
     <module>telemetry-service</module>
     <module>firmware-service</module>
     <module>audit-service</module>
+    <module>analytics-service</module>
   </modules>
 </project>

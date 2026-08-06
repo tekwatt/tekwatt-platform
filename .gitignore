@@ -5,6 +5,7 @@
 
 # Java / Maven
 target/
+.maven-repository/
 *.class
 *.jar
 *.war
@@ -34,4 +35,3 @@ logs/
 .terraform/
 *.tfstate
 *.tfstate.*
-

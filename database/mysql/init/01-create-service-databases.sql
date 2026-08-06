@@ -15,6 +15,7 @@ CREATE DATABASE IF NOT EXISTS tekwatt_ocpp CHARACTER SET utf8mb4 COLLATE utf8mb4
 CREATE DATABASE IF NOT EXISTS tekwatt_telemetry CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS tekwatt_firmware CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS tekwatt_audit CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS tekwatt_analytics CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 GRANT ALL PRIVILEGES ON tekwatt_auth.* TO 'tekwatt'@'%';
 GRANT ALL PRIVILEGES ON tekwatt_users.* TO 'tekwatt'@'%';
@@ -33,3 +34,4 @@ GRANT ALL PRIVILEGES ON tekwatt_ocpp.* TO 'tekwatt'@'%';
 GRANT ALL PRIVILEGES ON tekwatt_telemetry.* TO 'tekwatt'@'%';
 GRANT ALL PRIVILEGES ON tekwatt_firmware.* TO 'tekwatt'@'%';
 GRANT ALL PRIVILEGES ON tekwatt_audit.* TO 'tekwatt'@'%';
+GRANT ALL PRIVILEGES ON tekwatt_analytics.* TO 'tekwatt'@'%';

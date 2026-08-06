@@ -78,6 +78,10 @@ spring:
               uri: ${AUDIT_SERVICE_URL:http://localhost:8097}
               predicates:
                 - Path=/api/v1/audit-events/**
+            - id: analytics-service
+              uri: ${ANALYTICS_SERVICE_URL:http://localhost:8098}
+              predicates:
+                - Path=/api/v1/analytics/**
 
 server:
   port: ${SERVER_PORT:8080}
