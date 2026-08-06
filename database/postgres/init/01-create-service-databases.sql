@@ -3,3 +3,4 @@ CREATE DATABASE tekwatt_auth;
 CREATE DATABASE tekwatt_users;
 CREATE DATABASE tekwatt_tenants;
 CREATE DATABASE tekwatt_organizations;
+CREATE DATABASE tekwatt_chargers;
