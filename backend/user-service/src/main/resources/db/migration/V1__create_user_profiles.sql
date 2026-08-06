@@ -1,0 +1,13 @@
+CREATE TABLE user_profiles (
+  id UUID PRIMARY KEY,
+  auth_user_id UUID NOT NULL UNIQUE,
+  tenant_id UUID NOT NULL,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  email VARCHAR(254) NOT NULL UNIQUE,
+  phone VARCHAR(32),
+  status VARCHAR(20) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_user_profiles_tenant_id ON user_profiles(tenant_id);
