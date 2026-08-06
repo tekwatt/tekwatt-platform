@@ -1,0 +1,1 @@
+package com.tekwatt.reservation.dto;import jakarta.validation.constraints.*;import java.time.Instant;import java.util.UUID;public record ReservationRequest(@NotNull UUID tenantId,@NotNull UUID userId,@NotNull UUID chargerId,@NotNull UUID connectorId,@NotBlank @Size(max=64)String reference,@NotNull Instant startsAt,@NotNull Instant expiresAt){}

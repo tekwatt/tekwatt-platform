@@ -23,5 +23,6 @@
     <module>connector-service</module>
     <module>charging-session-service</module>
     <module>tariff-service</module>
+    <module>reservation-service</module>
   </modules>
 </project>
