@@ -17,6 +17,7 @@
     <java.version>21</java.version>
     <spring-boot.version>3.5.0</spring-boot.version>
     <spring-cloud.version>2025.0.0</spring-cloud.version>
+    <jjwt.version>0.12.6</jjwt.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
@@ -43,6 +44,14 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.14.0</version>
+          <configuration>
+            <release>${java.version}</release>
+          </configuration>
+        </plugin>
         <plugin>
           <groupId>org.springframework.boot</groupId>
           <artifactId>spring-boot-maven-plugin</artifactId>

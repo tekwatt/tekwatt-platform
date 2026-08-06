@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:auth;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+tekwatt:
+  auth:
+    jwt:
+      secret: test-secret-must-be-at-least-thirty-two-characters-long
+      access-token-ttl-seconds: 900
+      refresh-token-ttl-seconds: 2592000

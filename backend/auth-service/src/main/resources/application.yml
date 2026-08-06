@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/tekwatt_auth}
+    username: ${DATABASE_USERNAME:tekwatt}
+    password: ${DATABASE_PASSWORD:change-me}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+server:
+  port: ${SERVER_PORT:8081}
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+tekwatt:
+  auth:
+    jwt:
+      secret: ${JWT_SECRET:local-development-secret-must-be-at-least-thirty-two-characters}
+      access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:900}
+      refresh-token-ttl-seconds: ${JWT_REFRESH_TOKEN_TTL_SECONDS:2592000}
