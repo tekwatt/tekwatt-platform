@@ -1,7 +1,7 @@
-.PHONY: help up down logs db-status db-shell
+.PHONY: help up down logs db-status db-shell e2e
 
 help:
-	@echo "Available commands: up, down, logs, db-status, db-shell"
+	@echo "Available commands: up, down, logs, db-status, db-shell, e2e"
 
 up:
 	docker compose up -d
@@ -17,3 +17,6 @@ db-status:
 
 db-shell:
 	docker compose exec postgres psql -U tekwatt -d tekwatt
+
+e2e:
+	mvn -pl testing/e2e -Pe2e verify
