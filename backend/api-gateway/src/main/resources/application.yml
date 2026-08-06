@@ -26,6 +26,10 @@ spring:
               uri: ${CHARGER_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/v1/chargers/**
+            - id: connector-service
+              uri: ${CONNECTOR_SERVICE_URL:http://localhost:8087}
+              predicates:
+                - Path=/api/v1/connectors/**
             - id: charging-session-service
               uri: ${CHARGING_SESSION_SERVICE_URL:http://localhost:8084}
               predicates:

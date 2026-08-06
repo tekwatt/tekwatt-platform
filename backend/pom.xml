@@ -20,5 +20,6 @@
     <module>tenant-service</module>
     <module>organization-service</module>
     <module>charger-service</module>
+    <module>connector-service</module>
   </modules>
 </project>
