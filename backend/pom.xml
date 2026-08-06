@@ -26,5 +26,6 @@
     <module>reservation-service</module>
     <module>billing-service</module>
     <module>invoice-service</module>
+    <module>payment-service</module>
   </modules>
 </project>

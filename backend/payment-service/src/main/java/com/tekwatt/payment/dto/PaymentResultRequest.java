@@ -1,0 +1,1 @@
+package com.tekwatt.payment.dto;import jakarta.validation.constraints.*;public record PaymentResultRequest(@NotNull Boolean successful,@Size(max=150)String providerReference,@Size(max=500)String failureReason){}

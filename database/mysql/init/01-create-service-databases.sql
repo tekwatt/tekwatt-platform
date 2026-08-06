@@ -9,6 +9,7 @@ CREATE DATABASE IF NOT EXISTS tekwatt_tariffs CHARACTER SET utf8mb4 COLLATE utf8
 CREATE DATABASE IF NOT EXISTS tekwatt_reservations CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS tekwatt_billing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS tekwatt_invoices CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS tekwatt_payments CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 GRANT ALL PRIVILEGES ON tekwatt_auth.* TO 'tekwatt'@'%';
 GRANT ALL PRIVILEGES ON tekwatt_users.* TO 'tekwatt'@'%';
@@ -21,3 +22,4 @@ GRANT ALL PRIVILEGES ON tekwatt_tariffs.* TO 'tekwatt'@'%';
 GRANT ALL PRIVILEGES ON tekwatt_reservations.* TO 'tekwatt'@'%';
 GRANT ALL PRIVILEGES ON tekwatt_billing.* TO 'tekwatt'@'%';
 GRANT ALL PRIVILEGES ON tekwatt_invoices.* TO 'tekwatt'@'%';
+GRANT ALL PRIVILEGES ON tekwatt_payments.* TO 'tekwatt'@'%';
