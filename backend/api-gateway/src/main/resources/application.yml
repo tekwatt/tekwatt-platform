@@ -42,6 +42,10 @@ spring:
               uri: ${RESERVATION_SERVICE_URL:http://localhost:8089}
               predicates:
                 - Path=/api/v1/reservations/**
+            - id: billing-service
+              uri: ${BILLING_SERVICE_URL:http://localhost:8090}
+              predicates:
+                - Path=/api/v1/bills/**
 
 server:
   port: ${SERVER_PORT:8080}

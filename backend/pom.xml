@@ -24,5 +24,6 @@
     <module>charging-session-service</module>
     <module>tariff-service</module>
     <module>reservation-service</module>
+    <module>billing-service</module>
   </modules>
 </project>

@@ -1,0 +1,1 @@
+package com.tekwatt.billing.repository;import com.tekwatt.billing.entity.Bill;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface BillRepository extends JpaRepository<Bill,UUID>{boolean existsBySessionId(UUID sessionId);List<Bill>findAllByTenantIdOrderByCreatedAtDesc(UUID tenantId);}
