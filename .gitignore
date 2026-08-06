@@ -6,6 +6,7 @@
 # Java / Maven
 target/
 .maven-repository/
+tmp/
 *.class
 *.jar
 *.war
