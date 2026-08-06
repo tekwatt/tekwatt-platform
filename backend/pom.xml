@@ -22,5 +22,6 @@
     <module>charger-service</module>
     <module>connector-service</module>
     <module>charging-session-service</module>
+    <module>tariff-service</module>
   </modules>
 </project>

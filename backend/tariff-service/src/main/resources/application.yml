@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: tariff-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/tekwatt_tariffs?serverTimezone=UTC}
+    username: ${DATABASE_USERNAME:tekwatt}
+    password: ${DATABASE_PASSWORD:change-me}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+server:
+  port: ${SERVER_PORT:8088}
+management.endpoints.web.exposure.include: health,info
