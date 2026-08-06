@@ -1,0 +1,1 @@
+package com.tekwatt.ocpp.repository;import com.tekwatt.ocpp.entity.OcppMessage;import java.util.UUID;import org.springframework.data.jpa.repository.JpaRepository;public interface OcppMessageRepository extends JpaRepository<OcppMessage,UUID>{}

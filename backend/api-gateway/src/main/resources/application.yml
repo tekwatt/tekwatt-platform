@@ -58,6 +58,14 @@ spring:
               uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8093}
               predicates:
                 - Path=/api/v1/notifications/**
+            - id: ocpp-gateway-api
+              uri: ${OCPP_GATEWAY_URL:http://localhost:8094}
+              predicates:
+                - Path=/api/v1/ocpp/**
+            - id: ocpp-gateway-websocket
+              uri: ${OCPP_GATEWAY_WS_URL:ws://localhost:8094}
+              predicates:
+                - Path=/ocpp/**
 
 server:
   port: ${SERVER_PORT:8080}
