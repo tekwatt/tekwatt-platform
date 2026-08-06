@@ -1,0 +1,1 @@
+package com.tekwatt.firmware.dto;import jakarta.validation.constraints.*;import java.time.Instant;import java.util.UUID;public record CreateUpdateJobRequest(@NotNull UUID tenantId,@NotNull UUID chargerId,@NotNull UUID firmwarePackageId,@NotBlank@Pattern(regexp="ocpp1\\.6|ocpp2\\.0\\.1")String ocppVersion,@NotNull Instant scheduledAt){}

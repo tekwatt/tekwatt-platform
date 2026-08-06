@@ -1,0 +1,1 @@
+package com.tekwatt.firmware.repository;import com.tekwatt.firmware.entity.FirmwarePackage;import java.util.UUID;import org.springframework.data.jpa.repository.JpaRepository;public interface FirmwarePackageRepository extends JpaRepository<FirmwarePackage,UUID>{boolean existsByVendorIgnoreCaseAndModelIgnoreCaseAndVersion(String v,String m,String version);}

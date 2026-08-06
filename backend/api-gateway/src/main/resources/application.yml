@@ -70,6 +70,10 @@ spring:
               uri: ${TELEMETRY_SERVICE_URL:http://localhost:8095}
               predicates:
                 - Path=/api/v1/telemetry/**
+            - id: firmware-service
+              uri: ${FIRMWARE_SERVICE_URL:http://localhost:8096}
+              predicates:
+                - Path=/api/v1/firmware/**
 
 server:
   port: ${SERVER_PORT:8080}

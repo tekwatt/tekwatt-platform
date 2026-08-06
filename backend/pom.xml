@@ -30,5 +30,6 @@
     <module>notification-service</module>
     <module>ocpp-gateway</module>
     <module>telemetry-service</module>
+    <module>firmware-service</module>
   </modules>
 </project>

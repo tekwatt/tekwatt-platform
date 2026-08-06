@@ -1,0 +1,1 @@
+package com.tekwatt.firmware.dto;import com.tekwatt.firmware.entity.UpdateStatus;import jakarta.validation.constraints.*;public record UpdateJobStatusRequest(@NotNull UpdateStatus status,@Size(max=1000)String statusInfo){}

@@ -1,0 +1,1 @@
+package com.tekwatt.firmware;import org.springframework.boot.SpringApplication;import org.springframework.boot.autoconfigure.SpringBootApplication;@SpringBootApplication public class FirmwareServiceApplication{public static void main(String[]a){SpringApplication.run(FirmwareServiceApplication.class,a);}}
