@@ -1,0 +1,1 @@
+package com.tekwatt.reporting.repository;import com.tekwatt.reporting.entity.Report;import java.util.UUID;import org.springframework.data.domain.*;import org.springframework.data.jpa.repository.JpaRepository;public interface ReportRepository extends JpaRepository<Report,UUID>{Page<Report> findByTenantIdOrderByCreatedAtDesc(UUID tenantId,Pageable pageable);}
