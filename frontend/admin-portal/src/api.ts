@@ -8,6 +8,12 @@ export type Payment = { id: string; amount?: number; currency?: string; status?:
 export type UserProfile = { id: string; firstName?: string; lastName?: string; email: string; status?: string };
 export type Report = { id: string; type?: string; fileName?: string; status?: string; createdAt?: string };
 export type Notification = { id: string; channel: string; recipient: string; subject?: string; body: string; status: string; createdAt?: string };
+export type Connector = { id: string; tenantId: string; chargerId: string; connectorNumber: number; type: string; maxPowerKw: number; maxVoltage: number; maxCurrent: number; status: string };
+export type OcppConnection = { stationId: string; connected: boolean; connectedAt?: string; protocol?: string };
+export type OcppMessage = { id: string; stationId: string; direction: string; messageType: number; uniqueId: string; action?: string; payload: string; createdAt: string };
+export type Telemetry = { id: string; chargerId: string; connectorId: string; transactionId?: string; measurand: string; value: number; unit: string; sampledAt: string };
+export type FirmwarePackage = { id: string; vendor: string; model: string; version: string; downloadUrl: string; active: boolean };
+export type FirmwareJob = { id: string; tenantId: string; chargerId: string; firmwarePackageId: string; ocppVersion: string; status: string; scheduledAt: string; statusInfo?: string };
 
 class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -57,4 +63,19 @@ export const api = {
   sendNotification: (id: string) => request<Notification>(`/api/v1/notifications/${id}/send`, { method: 'POST' }),
   updateTenant: (id: string, body: { name: string; slug: string; contactEmail: string }) => request<Tenant>(`/api/v1/tenants/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   createCharger: (body: { tenantId: string; stationId: string; serialNumber: string; vendor: string; model: string; protocolVersion: string }) => request<Charger>('/api/v1/chargers', { method: 'POST', body: JSON.stringify(body) }),
+  setChargerStatus: (id: string, status: string) => request<Charger>(`/api/v1/chargers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  heartbeatCharger: (id: string) => request<Charger>(`/api/v1/chargers/${id}/heartbeat`, { method: 'POST' }),
+  connectors: (chargerId: string) => request<Connector[]>(`/api/v1/connectors?chargerId=${encodeURIComponent(chargerId)}`),
+  createConnector: (body: { tenantId: string; chargerId: string; connectorNumber: number; type: string; maxPowerKw: number; maxVoltage: number; maxCurrent: number }) => request<Connector>('/api/v1/connectors', { method: 'POST', body: JSON.stringify(body) }),
+  ocppConnections: () => request<OcppConnection[]>('/api/v1/ocpp/connections'),
+  ocppMessages: () => request<OcppMessage[]>('/api/v1/ocpp/messages'),
+  remoteStart: (body: { stationId: string; ocppVersion: string; connectorId: number; idToken: string }) => request<{messageId:string}>('/api/v1/ocpp/commands/remote-start', { method: 'POST', body: JSON.stringify(body) }),
+  remoteStop: (body: { stationId: string; ocppVersion: string; transactionId: string }) => request<{messageId:string}>('/api/v1/ocpp/commands/remote-stop', { method: 'POST', body: JSON.stringify(body) }),
+  latestTelemetry: (connectorId: string) => request<Telemetry[]>(`/api/v1/telemetry/readings/latest?connectorId=${encodeURIComponent(connectorId)}`),
+  firmwarePackages: () => request<FirmwarePackage[]>('/api/v1/firmware/packages'),
+  createFirmwarePackage: (body: { vendor: string; model: string; version: string; downloadUrl: string; checksum: string; checksumAlgorithm: string; signature?: string; fileSizeBytes: number }) => request<FirmwarePackage>('/api/v1/firmware/packages', { method: 'POST', body: JSON.stringify(body) }),
+  firmwareJobs: (tenantId: string) => request<FirmwareJob[]>(`/api/v1/firmware/jobs?tenantId=${encodeURIComponent(tenantId)}`),
+  createFirmwareJob: (body: { tenantId: string; chargerId: string; firmwarePackageId: string; ocppVersion: string; scheduledAt: string }) => request<FirmwareJob>('/api/v1/firmware/jobs', { method: 'POST', body: JSON.stringify(body) }),
+  dispatchFirmwareJob: (id: string) => request<FirmwareJob>(`/api/v1/firmware/jobs/${id}/dispatch`, { method: 'POST' }),
+  serviceStatus: async (slug: string) => { const response = await fetch(`${API_BASE}/openapi/${slug}/v3/api-docs`); return response.ok; },
 };
