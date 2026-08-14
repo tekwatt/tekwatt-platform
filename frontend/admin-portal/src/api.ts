@@ -7,6 +7,7 @@ export type ChargingSession = { id: string; transactionId: string; chargerId: st
 export type Payment = { id: string; amount?: number; currency?: string; status?: string; createdAt?: string };
 export type UserProfile = { id: string; firstName?: string; lastName?: string; email: string; status?: string };
 export type Report = { id: string; type?: string; fileName?: string; status?: string; createdAt?: string };
+export type Notification = { id: string; channel: string; recipient: string; subject?: string; body: string; status: string; createdAt?: string };
 
 class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -39,7 +40,21 @@ export const api = {
   chargers: (tenantId: string) => request<Charger[]>(`/api/v1/chargers?tenantId=${encodeURIComponent(tenantId)}`),
   sessions: (tenantId: string) => request<ChargingSession[]>(`/api/v1/charging-sessions?tenantId=${encodeURIComponent(tenantId)}`),
   payments: (tenantId: string) => request<Payment[]>(`/api/v1/payments?tenantId=${encodeURIComponent(tenantId)}`),
+  refundPayment: (id: string) => request<Payment>(`/api/v1/payments/${id}/refund`, { method: 'POST' }),
   users: async (tenantId: string) => pageContent(await request<{ content: UserProfile[] }>(`/api/v1/users?tenantId=${encodeURIComponent(tenantId)}&page=0&size=100`)),
+  createUser: (body: { authUserId: string; tenantId: string; firstName: string; lastName: string; email: string; phone?: string }) => request<UserProfile>('/api/v1/users', { method: 'POST', body: JSON.stringify(body) }),
+  deactivateUser: (id: string) => request<void>(`/api/v1/users/${id}`, { method: 'DELETE' }),
   reports: async (tenantId: string) => pageContent(await request<{ content: Report[] }>(`/api/v1/reports?tenantId=${encodeURIComponent(tenantId)}&page=0&size=100`)),
+  createReport: (body: { tenantId: string; reportType: string; format: string; from: string; to: string }) => request<Report>('/api/v1/reports', { method: 'POST', body: JSON.stringify(body) }),
+  downloadReport: async (id: string, fileName = 'report') => {
+    const token = sessionStorage.getItem('tekwatt-access-token');
+    const response = await fetch(`${API_BASE}/api/v1/reports/${id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!response.ok) throw new ApiError(`Report download failed (${response.status})`, response.status);
+    const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = fileName; link.click(); URL.revokeObjectURL(url);
+  },
+  notifications: (tenantId: string) => request<Notification[]>(`/api/v1/notifications?tenantId=${encodeURIComponent(tenantId)}`),
+  createNotification: (body: { tenantId: string; idempotencyKey: string; channel: string; recipient: string; subject?: string; body: string; maxAttempts: number }) => request<Notification>('/api/v1/notifications', { method: 'POST', body: JSON.stringify(body) }),
+  sendNotification: (id: string) => request<Notification>(`/api/v1/notifications/${id}/send`, { method: 'POST' }),
+  updateTenant: (id: string, body: { name: string; slug: string; contactEmail: string }) => request<Tenant>(`/api/v1/tenants/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   createCharger: (body: { tenantId: string; stationId: string; serialNumber: string; vendor: string; model: string; protocolVersion: string }) => request<Charger>('/api/v1/chargers', { method: 'POST', body: JSON.stringify(body) }),
 };
