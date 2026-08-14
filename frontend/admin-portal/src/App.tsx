@@ -79,11 +79,11 @@ function Login({ onLogin, onDemo }: { onLogin: (email: string, password: string,
   </main>;
 }
 
-function Sidebar({ page, setPage, open, close }: { page: Page; setPage: (page: Page) => void; open: boolean; close: () => void }) {
+function Sidebar({ page, setPage, open, close, chargerCount }: { page: Page; setPage: (page: Page) => void; open: boolean; close: () => void; chargerCount: number }) {
   return <aside className={`sidebar ${open ? 'open' : ''}`}>
     <div className="sidebar-head"><Brand /><button className="icon mobile-only" onClick={close}><X /></button></div>
     <div className="workspace"><span className="avatar mini">TW</span><div><small>WORKSPACE</small><strong>TekWatt India</strong></div><ChevronDown size={16} /></div>
-    <nav>{nav.map(item => <button key={item.label} className={page === item.label ? 'active' : ''} onClick={() => { setPage(item.label); close(); }}><item.icon size={19} /><span>{item.label}</span>{item.badge && <em>{item.badge}</em>}</button>)}</nav>
+    <nav>{nav.map(item => <button key={item.label} className={page === item.label ? 'active' : ''} onClick={() => { setPage(item.label); close(); }}><item.icon size={19} /><span>{item.label}</span>{item.label === 'Stations' && <em>{chargerCount}</em>}</button>)}</nav>
     <div className="sidebar-foot"><div className="health-dot" /><div><strong>All systems operational</strong><small>Updated just now</small></div></div>
   </aside>;
 }
@@ -97,7 +97,7 @@ function Metric({ label, value, trend, icon: Icon, tone }: { label: string; valu
   return <article className="metric"><div className={`metric-icon ${tone}`}><Icon /></div><div><small>{label}</small><strong>{value}</strong><span>{trend}</span></div></article>;
 }
 
-function Dashboard({ setPage, data, demo }: { setPage: (p: Page) => void; data: LiveData; demo: boolean }) {
+function Dashboard({ setPage, data, demo, onAddStation }: { setPage: (p: Page) => void; data: LiveData; demo: boolean; onAddStation: () => void }) {
   const stationRows = demo ? stations : data.chargers.map((charger, index) => ({ name: charger.stationId, city: `${charger.vendor} ${charger.model}`, chargers: 1, power: charger.protocolVersion, status: charger.status === 'AVAILABLE' || charger.status === 'ONLINE' ? 'Online' : charger.status, usage: 35 + (index * 13) % 55 }));
   const sessionRows = demo ? sessions : data.sessions.map(session => ({ id: session.transactionId || session.id, station: data.chargers.find(charger => charger.id === session.chargerId)?.stationId ?? 'Unknown charger', energy: `${session.energyKwh ?? 0} kWh`, amount: `${session.currency ?? 'INR'} ${session.totalCost ?? 0}`, status: session.status, time: session.startedAt ? new Date(session.startedAt).toLocaleString() : '—' }));
   const online = demo ? 5 : data.chargers.filter(charger => ['AVAILABLE','ONLINE','CHARGING'].includes(charger.status)).length;
@@ -105,7 +105,7 @@ function Dashboard({ setPage, data, demo }: { setPage: (p: Page) => void; data: 
   const energy = demo ? 428.6 : data.sessions.reduce((sum, session) => sum + Number(session.energyKwh ?? 0), 0);
   const revenue = demo ? 12840 : data.payments.filter(payment => ['COMPLETED','SUCCESS','PAID'].includes(payment.status ?? '')).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
   return <>
-    <section className="welcome"><div><span className="eyebrow">THURSDAY, 14 AUGUST</span><h1>Good afternoon, Bharanidharan.</h1><p>Your charging network is performing well today.</p></div><button className="primary" onClick={() => setPage('Stations')}><Plus size={18} /> Add station</button></section>
+    <section className="welcome"><div><span className="eyebrow">THURSDAY, 14 AUGUST</span><h1>Good afternoon, Bharanidharan.</h1><p>Your charging network is performing well today.</p></div><button className="primary" onClick={onAddStation}><Plus size={18} /> Add station</button></section>
     <section className="metrics">
       <Metric label="ONLINE CHARGERS" value={`${online} / ${demo ? 5 : data.chargers.length}`} trend={demo ? 'Demo network' : 'Live backend data'} icon={Building2} tone="green" />
       <Metric label="ACTIVE SESSIONS" value={`${active}`} trend={demo ? '+12% from yesterday' : `${data.sessions.length} total sessions`} icon={PlugZap} tone="blue" />
@@ -138,13 +138,30 @@ function GenericPage({ page, data }: { page: Page; data: LiveData }) {
     Settings: { icon: Settings, title: 'Platform settings', copy: 'Configure organization, tariffs, notifications and integrations.', stats: ['Organization', 'Tariffs', 'Integrations'] },
   };
   const item = content[page as keyof typeof content];
-  return <section><div className="page-title"><span className="eyebrow">TEKWATT NEXUS</span><h1>{item.title}</h1><p>{item.copy}</p></div><div className="feature-grid">{item.stats.map((stat, i) => <article className="card feature" key={stat}><span><item.icon /></span><small>{['OVERVIEW','PERFORMANCE','STATUS'][i]}</small><strong>{stat}</strong><span className="connected-label">Connected to API Gateway</span></article>)}</div></section>;
+  return <section><div className="page-title"><span className="eyebrow">TEKWATT NEXUS</span><h1>{item.title}</h1><p>{item.copy}</p></div><div className="feature-grid">{item.stats.map((stat, i) => <article className="card feature" key={stat}><span><item.icon /></span><small>{['OVERVIEW','PERFORMANCE','STATUS'][i]}</small><strong>{stat}</strong></article>)}</div></section>;
+}
+
+function AddStationModal({ tenant, close, saved }: { tenant?: Tenant; close: () => void; saved: () => Promise<void> }) {
+  const [form, setForm] = useState({ stationId: '', serialNumber: '', vendor: '', model: '', protocolVersion: 'OCPP_2_0_1' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const update = (name: string, value: string) => setForm(current => ({ ...current, [name]: value }));
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!tenant) { setError('A tenant must be loaded before adding a station.'); return; }
+    setSaving(true); setError('');
+    try { await api.createCharger({ tenantId: tenant.id, ...form }); await saved(); close(); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Station could not be created'); }
+    finally { setSaving(false); }
+  };
+  return <div className="modal-backdrop" onMouseDown={event => { if (event.currentTarget === event.target) close(); }}><form className="modal" onSubmit={submit}><div className="modal-head"><div><span className="eyebrow">CHARGER SERVICE</span><h2>Add charging station</h2></div><button type="button" className="icon" onClick={close}><X /></button></div><div className="form-grid"><label>Station ID<input required value={form.stationId} onChange={e => update('stationId', e.target.value)} placeholder="TW-CHN-001" /></label><label>Serial number<input required value={form.serialNumber} onChange={e => update('serialNumber', e.target.value)} placeholder="SN-2026-0001" /></label><label>Vendor<input required value={form.vendor} onChange={e => update('vendor', e.target.value)} placeholder="TekWatt" /></label><label>Model<input required value={form.model} onChange={e => update('model', e.target.value)} placeholder="Nexus DC 120" /></label><label className="full">OCPP version<select value={form.protocolVersion} onChange={e => update('protocolVersion', e.target.value)}><option value="OCPP_2_0_1">OCPP 2.0.1</option><option value="OCPP_1_6J">OCPP 1.6J</option></select></label></div>{error && <div className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="secondary" onClick={close}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving ? 'Creating…' : 'Create station'}</button></div></form></div>;
 }
 
 function Portal({ logout, demo }: { logout: () => void; demo: boolean }) {
   const [page, setPage] = useState<Page>('Dashboard');
   const [dark, setDark] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [showAddStation, setShowAddStation] = useState(false);
   const [data, setData] = useState<LiveData>({ chargers: [], sessions: [], payments: [], users: [], reports: [] });
   const [loading, setLoading] = useState(!demo);
   const [loadError, setLoadError] = useState('');
@@ -168,8 +185,8 @@ function Portal({ logout, demo }: { logout: () => void; demo: boolean }) {
   useEffect(() => { void refresh(); }, [demo]);
   const stationRows = demo ? stations : data.chargers.map((charger, index) => ({ name: charger.stationId, city: `${charger.vendor} ${charger.model}`, chargers: 1, power: charger.protocolVersion, status: charger.status === 'AVAILABLE' || charger.status === 'ONLINE' ? 'Online' : charger.status, usage: 35 + (index * 13) % 55 }));
   const sessionRows = demo ? sessions : data.sessions.map(session => ({ id: session.transactionId || session.id, station: data.chargers.find(charger => charger.id === session.chargerId)?.stationId ?? 'Unknown charger', energy: `${session.energyKwh ?? 0} kWh`, amount: `${session.currency ?? 'INR'} ${session.totalCost ?? 0}`, status: session.status, time: session.startedAt ? new Date(session.startedAt).toLocaleString() : '—' }));
-  const body = useMemo(() => page === 'Dashboard' ? <Dashboard setPage={setPage} data={data} demo={demo} /> : page === 'Stations' ? <><div className="page-title"><span className="eyebrow">INFRASTRUCTURE</span><h1>Charging stations</h1><p>Monitor availability and utilization across the network.</p></div><StationCard items={stationRows} /></> : page === 'Sessions' ? <><div className="page-title"><span className="eyebrow">CHARGING ACTIVITY</span><h1>Charging sessions</h1><p>Follow live and completed vehicle charging activity.</p></div><SessionsCard items={sessionRows} /></> : <GenericPage page={page} data={data} />, [page, data, demo]);
-  return <div className={`app ${dark ? 'dark' : ''}`}><Sidebar page={page} setPage={setPage} open={menu} close={() => setMenu(false)} />{menu && <div className="scrim" onClick={() => setMenu(false)} />}<div className="shell"><Header page={page} dark={dark} toggleDark={() => setDark(!dark)} openMenu={() => setMenu(true)} logout={logout} navigate={setPage} /><main className="content">{demo && <div className="mode-banner">Demo data mode <button onClick={logout}>Connect backend</button></div>}{loading && <div className="loading-bar">Loading data from API Gateway…</div>}{loadError && <div className="api-error"><span>{loadError}</span><button onClick={refresh}>Retry</button></div>}{!loading && body}</main></div></div>;
+  const body = useMemo(() => page === 'Dashboard' ? <Dashboard setPage={setPage} data={data} demo={demo} onAddStation={() => setShowAddStation(true)} /> : page === 'Stations' ? <><div className="page-title split"><div><span className="eyebrow">INFRASTRUCTURE</span><h1>Charging stations</h1><p>Monitor availability and utilization across the network.</p></div><button className="primary" onClick={() => setShowAddStation(true)}><Plus size={18} /> Add station</button></div><StationCard items={stationRows} /></> : page === 'Sessions' ? <><div className="page-title"><span className="eyebrow">CHARGING ACTIVITY</span><h1>Charging sessions</h1><p>Follow live and completed vehicle charging activity.</p></div><SessionsCard items={sessionRows} /></> : <GenericPage page={page} data={data} />, [page, data, demo]);
+  return <div className={`app ${dark ? 'dark' : ''}`}><Sidebar page={page} setPage={setPage} open={menu} close={() => setMenu(false)} chargerCount={demo ? 5 : data.chargers.length} />{menu && <div className="scrim" onClick={() => setMenu(false)} />}<div className="shell"><Header page={page} dark={dark} toggleDark={() => setDark(!dark)} openMenu={() => setMenu(true)} logout={logout} navigate={setPage} /><main className="content">{demo && <div className="mode-banner">Demo data mode <button onClick={logout}>Connect backend</button></div>}{loading && <div className="loading-bar">Loading data from API Gateway…</div>}{loadError && <div className="api-error"><span>{loadError}</span><button onClick={refresh}>Retry</button></div>}{!loading && body}</main></div>{showAddStation && <AddStationModal tenant={data.tenant} close={() => setShowAddStation(false)} saved={refresh} />}</div>;
 }
 
 export default function App() {
