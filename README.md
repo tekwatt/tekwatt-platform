@@ -22,3 +22,16 @@ TekWatt is a modular EV charging platform for operating chargers, managing charg
 
 The service implementations will be introduced incrementally; this commit establishes the shared platform foundation.
 
+## Start and stop all backend services
+
+After building with Maven, start every service from PowerShell:
+
+```powershell
+.\tools\start-all.ps1 -DatabasePassword "your-database-password"
+```
+
+Stop the processes started by the launcher:
+
+```powershell
+.\tools\stop-all.ps1
+```
