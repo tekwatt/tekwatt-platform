@@ -2,7 +2,7 @@ param(
     [string]$DatabaseUsername = "tekwatt",
     [Parameter(Mandatory = $true)]
     [string]$DatabasePassword,
-    [int]$StartupTimeoutSeconds = 120
+    [int]$StartupTimeoutSeconds = 300
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,6 +39,8 @@ if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
 New-Item -ItemType Directory -Force $logsDirectory | Out-Null
 $env:DATABASE_USERNAME = $DatabaseUsername
 $env:DATABASE_PASSWORD = $DatabasePassword
+$env:SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE = "3"
+$env:SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE = "1"
 $started = @()
 
 foreach ($service in $services) {
