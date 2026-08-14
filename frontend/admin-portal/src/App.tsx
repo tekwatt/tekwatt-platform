@@ -155,10 +155,13 @@ function Portal({ logout, demo }: { logout: () => void; demo: boolean }) {
       const tenants = await api.tenants();
       if (!tenants.length) throw new Error('No tenant exists yet. Create a tenant in Swagger before loading operational data.');
       const tenant = tenants[0];
-      const [chargers, sessionData, payments, users, reports] = await Promise.all([
+      const results = await Promise.allSettled([
         api.chargers(tenant.id), api.sessions(tenant.id), api.payments(tenant.id), api.users(tenant.id), api.reports(tenant.id),
       ]);
-      setData({ tenant, chargers, sessions: sessionData, payments, users, reports });
+      const failed = results.filter(result => result.status === 'rejected').length;
+      const value = <T,>(index: number) => results[index].status === 'fulfilled' ? results[index].value as T[] : [];
+      setData({ tenant, chargers: value<Charger>(0), sessions: value<ChargingSession>(1), payments: value<Payment>(2), users: value<UserProfile>(3), reports: value<Report>(4) });
+      if (failed) setLoadError(`${failed} service${failed > 1 ? 's are' : ' is'} temporarily unavailable. Available data is still shown.`);
     } catch (reason) { setLoadError(reason instanceof Error ? reason.message : 'Backend data could not be loaded'); }
     finally { setLoading(false); }
   };
