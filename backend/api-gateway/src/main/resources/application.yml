@@ -90,6 +90,126 @@ spring:
               uri: ${ADMIN_SERVICE_URL:http://localhost:8100}
               predicates:
                 - Path=/api/v1/admin/**
+            - id: openapi-auth
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/openapi/auth/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-user
+              uri: ${USER_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/openapi/user/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-charger
+              uri: ${CHARGER_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/openapi/charger/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-charging-session
+              uri: ${CHARGING_SESSION_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/openapi/charging-session/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-tenant
+              uri: ${TENANT_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/openapi/tenant/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-organization
+              uri: ${ORGANIZATION_SERVICE_URL:http://localhost:8086}
+              predicates:
+                - Path=/openapi/organization/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-connector
+              uri: ${CONNECTOR_SERVICE_URL:http://localhost:8087}
+              predicates:
+                - Path=/openapi/connector/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-tariff
+              uri: ${TARIFF_SERVICE_URL:http://localhost:8088}
+              predicates:
+                - Path=/openapi/tariff/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-reservation
+              uri: ${RESERVATION_SERVICE_URL:http://localhost:8089}
+              predicates:
+                - Path=/openapi/reservation/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-billing
+              uri: ${BILLING_SERVICE_URL:http://localhost:8090}
+              predicates:
+                - Path=/openapi/billing/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-invoice
+              uri: ${INVOICE_SERVICE_URL:http://localhost:8091}
+              predicates:
+                - Path=/openapi/invoice/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-payment
+              uri: ${PAYMENT_SERVICE_URL:http://localhost:8092}
+              predicates:
+                - Path=/openapi/payment/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-notification
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8093}
+              predicates:
+                - Path=/openapi/notification/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-ocpp
+              uri: ${OCPP_GATEWAY_URL:http://localhost:8094}
+              predicates:
+                - Path=/openapi/ocpp/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-telemetry
+              uri: ${TELEMETRY_SERVICE_URL:http://localhost:8095}
+              predicates:
+                - Path=/openapi/telemetry/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-firmware
+              uri: ${FIRMWARE_SERVICE_URL:http://localhost:8096}
+              predicates:
+                - Path=/openapi/firmware/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-audit
+              uri: ${AUDIT_SERVICE_URL:http://localhost:8097}
+              predicates:
+                - Path=/openapi/audit/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-analytics
+              uri: ${ANALYTICS_SERVICE_URL:http://localhost:8098}
+              predicates:
+                - Path=/openapi/analytics/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-reporting
+              uri: ${REPORTING_SERVICE_URL:http://localhost:8099}
+              predicates:
+                - Path=/openapi/reporting/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-admin
+              uri: ${ADMIN_SERVICE_URL:http://localhost:8100}
+              predicates:
+                - Path=/openapi/admin/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
 
 server:
   port: ${SERVER_PORT:8080}
@@ -114,3 +234,53 @@ tekwatt:
   gateway:
     cors:
       allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    persist-authorization: true
+    doc-expansion: none
+    operations-sorter: alpha
+    tags-sorter: alpha
+    urls:
+      - name: Authentication Service
+        url: /openapi/auth/v3/api-docs
+      - name: User Service
+        url: /openapi/user/v3/api-docs
+      - name: Charger Service
+        url: /openapi/charger/v3/api-docs
+      - name: Charging Session Service
+        url: /openapi/charging-session/v3/api-docs
+      - name: Tenant Service
+        url: /openapi/tenant/v3/api-docs
+      - name: Organization Service
+        url: /openapi/organization/v3/api-docs
+      - name: Connector Service
+        url: /openapi/connector/v3/api-docs
+      - name: Tariff Service
+        url: /openapi/tariff/v3/api-docs
+      - name: Reservation Service
+        url: /openapi/reservation/v3/api-docs
+      - name: Billing Service
+        url: /openapi/billing/v3/api-docs
+      - name: Invoice Service
+        url: /openapi/invoice/v3/api-docs
+      - name: Payment Service
+        url: /openapi/payment/v3/api-docs
+      - name: Notification Service
+        url: /openapi/notification/v3/api-docs
+      - name: OCPP Gateway
+        url: /openapi/ocpp/v3/api-docs
+      - name: Telemetry Service
+        url: /openapi/telemetry/v3/api-docs
+      - name: Firmware Service
+        url: /openapi/firmware/v3/api-docs
+      - name: Audit Service
+        url: /openapi/audit/v3/api-docs
+      - name: Analytics Service
+        url: /openapi/analytics/v3/api-docs
+      - name: Reporting Service
+        url: /openapi/reporting/v3/api-docs
+      - name: Admin Service
+        url: /openapi/admin/v3/api-docs

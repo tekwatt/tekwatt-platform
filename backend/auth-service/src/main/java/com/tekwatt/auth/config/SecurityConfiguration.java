@@ -12,7 +12,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfiguration {
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.csrf(csrf -> csrf.disable()).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(requests -> requests.requestMatchers("/api/v1/auth/**", "/actuator/health/**", "/actuator/info").permitAll().anyRequest().denyAll()).build();
+                .authorizeHttpRequests(requests -> requests.requestMatchers("/api/v1/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/health/**", "/actuator/info").permitAll().anyRequest().denyAll()).build();
     }
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
 }
