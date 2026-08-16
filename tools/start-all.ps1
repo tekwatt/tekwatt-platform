@@ -29,6 +29,7 @@ $services = @(
     "analytics-service",
     "reporting-service",
     "admin-service",
+    "support-service",
     "api-gateway"
 )
 

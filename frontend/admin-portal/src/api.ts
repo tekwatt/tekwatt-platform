@@ -14,6 +14,10 @@ export type OcppMessage = { id: string; stationId: string; direction: string; me
 export type Telemetry = { id: string; chargerId: string; connectorId: string; transactionId?: string; measurand: string; value: number; unit: string; sampledAt: string };
 export type FirmwarePackage = { id: string; vendor: string; model: string; version: string; downloadUrl: string; active: boolean };
 export type FirmwareJob = { id: string; tenantId: string; chargerId: string; firmwarePackageId: string; ocppVersion: string; status: string; scheduledAt: string; statusInfo?: string };
+export type SupportTicket = { id:string; ticketNumber:string; tenantId:string; requesterId?:string; requesterName:string; requesterEmail:string; subject:string; description:string; category:string; priority:'LOW'|'MEDIUM'|'HIGH'|'URGENT'; status:'OPEN'|'ASSIGNED'|'IN_PROGRESS'|'WAITING_CUSTOMER'|'RESOLVED'|'CLOSED'|'CANCELLED'; assigneeId?:string; assigneeName?:string; stationId?:string; sessionId?:string; slaDueAt:string; firstResponseAt?:string; resolvedAt?:string; closedAt?:string; createdAt:string; updatedAt:string };
+export type TicketComment = { id:string; ticketId:string; authorId?:string; authorName:string; body:string; internalNote:boolean; createdAt:string };
+export type TicketEvent = { id:string; ticketId:string; eventType:string; fromValue?:string; toValue?:string; actorName?:string; createdAt:string };
+export type TicketDetail = { ticket:SupportTicket; comments:TicketComment[]; history:TicketEvent[] };
 
 class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -78,5 +82,12 @@ export const api = {
   firmwareJobs: (tenantId: string) => request<FirmwareJob[]>(`/api/v1/firmware/jobs?tenantId=${encodeURIComponent(tenantId)}`),
   createFirmwareJob: (body: { tenantId: string; chargerId: string; firmwarePackageId: string; ocppVersion: string; scheduledAt: string }) => request<FirmwareJob>('/api/v1/firmware/jobs', { method: 'POST', body: JSON.stringify(body) }),
   dispatchFirmwareJob: (id: string) => request<FirmwareJob>(`/api/v1/firmware/jobs/${id}/dispatch`, { method: 'POST' }),
+  supportTickets: (tenantId:string) => request<SupportTicket[]>(`/api/v1/support/tickets?tenantId=${encodeURIComponent(tenantId)}`),
+  supportTicket: (id:string) => request<TicketDetail>(`/api/v1/support/tickets/${id}`),
+  createSupportTicket: (body:{tenantId:string;requesterId?:string;requesterName:string;requesterEmail:string;subject:string;description:string;category:string;priority:string;stationId?:string;sessionId?:string}) => request<SupportTicket>('/api/v1/support/tickets',{method:'POST',body:JSON.stringify(body)}),
+  assignSupportTicket: (id:string,body:{assigneeId:string;assigneeName:string;actorId?:string;actorName?:string}) => request<SupportTicket>(`/api/v1/support/tickets/${id}/assignment`,{method:'PATCH',body:JSON.stringify(body)}),
+  prioritizeSupportTicket: (id:string,body:{priority:string;actorId?:string;actorName?:string}) => request<SupportTicket>(`/api/v1/support/tickets/${id}/priority`,{method:'PATCH',body:JSON.stringify(body)}),
+  transitionSupportTicket: (id:string,body:{status:string;actorId?:string;actorName?:string}) => request<SupportTicket>(`/api/v1/support/tickets/${id}/status`,{method:'PATCH',body:JSON.stringify(body)}),
+  commentSupportTicket: (id:string,body:{authorId?:string;authorName:string;body:string;internalNote:boolean}) => request<TicketComment>(`/api/v1/support/tickets/${id}/comments`,{method:'POST',body:JSON.stringify(body)}),
   serviceStatus: async (slug: string) => { const response = await fetch(`${API_BASE}/openapi/${slug}/v3/api-docs`); return response.ok; },
 };

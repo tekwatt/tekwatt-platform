@@ -1,0 +1,1 @@
+package com.tekwatt.support.dto;import com.tekwatt.support.entity.*;import java.util.List;public record TicketDetailResponse(SupportTicket ticket,List<TicketComment>comments,List<TicketEvent>history){}

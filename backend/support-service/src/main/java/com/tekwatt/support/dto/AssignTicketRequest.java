@@ -1,0 +1,1 @@
+package com.tekwatt.support.dto;import jakarta.validation.constraints.*;import java.util.UUID;public record AssignTicketRequest(@NotNull UUID assigneeId,@NotBlank String assigneeName,UUID actorId,String actorName){}

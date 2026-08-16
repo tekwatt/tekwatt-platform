@@ -7,3 +7,5 @@ Start API Gateway and the services, then open:
 Use the definition selector at the top to switch between all TekWatt services. Click **Authorize** and enter the JWT access token returned by `POST /api/v1/auth/login` or `POST /api/v1/auth/register`.
 
 Each service also exposes its own OpenAPI JSON at `http://localhost:{service-port}/v3/api-docs`. API Gateway proxies those definitions under `/openapi/{service}/v3/api-docs` so the browser only needs port `8080`.
+
+The Support Service appears as **Support Service** in the selector and exposes the complete ticket lifecycle under `/api/v1/support/tickets`.

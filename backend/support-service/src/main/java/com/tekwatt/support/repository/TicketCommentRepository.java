@@ -1,0 +1,1 @@
+package com.tekwatt.support.repository;import com.tekwatt.support.entity.TicketComment;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface TicketCommentRepository extends JpaRepository<TicketComment,UUID>{List<TicketComment>findAllByTicketIdOrderByCreatedAtAsc(UUID ticketId);}

@@ -27,8 +27,10 @@ class ApiGatewayApplicationTests {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.urls").isArray()
-                .jsonPath("$.urls.length()").isEqualTo(20)
+                .jsonPath("$.urls.length()").isEqualTo(21)
                 .jsonPath("$.urls[?(@.name == 'Admin Service')].url")
-                .isEqualTo("/openapi/admin/v3/api-docs");
+                .isEqualTo("/openapi/admin/v3/api-docs")
+                .jsonPath("$.urls[?(@.name == 'Support Service')].url")
+                .isEqualTo("/openapi/support/v3/api-docs");
     }
 }

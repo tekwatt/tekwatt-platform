@@ -1,0 +1,1 @@
+package com.tekwatt.support.dto;import com.tekwatt.support.entity.TicketStatus;import jakarta.validation.constraints.NotNull;import java.util.UUID;public record UpdateStatusRequest(@NotNull TicketStatus status,UUID actorId,String actorName){}

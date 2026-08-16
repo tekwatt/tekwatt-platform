@@ -1,0 +1,1 @@
+package com.tekwatt.support.dto;import com.tekwatt.support.entity.TicketPriority;import jakarta.validation.constraints.NotNull;import java.util.UUID;public record UpdatePriorityRequest(@NotNull TicketPriority priority,UUID actorId,String actorName){}

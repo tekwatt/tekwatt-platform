@@ -90,6 +90,10 @@ spring:
               uri: ${ADMIN_SERVICE_URL:http://localhost:8100}
               predicates:
                 - Path=/api/v1/admin/**
+            - id: support-service
+              uri: ${SUPPORT_SERVICE_URL:http://localhost:8101}
+              predicates:
+                - Path=/api/v1/support/**
             - id: openapi-auth
               uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:
@@ -210,6 +214,12 @@ spring:
                 - Path=/openapi/admin/v3/api-docs
               filters:
                 - SetPath=/v3/api-docs
+            - id: openapi-support
+              uri: ${SUPPORT_SERVICE_URL:http://localhost:8101}
+              predicates:
+                - Path=/openapi/support/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
 
 server:
   port: ${SERVER_PORT:8080}
@@ -284,3 +294,5 @@ springdoc:
         url: /openapi/reporting/v3/api-docs
       - name: Admin Service
         url: /openapi/admin/v3/api-docs
+      - name: Support Service
+        url: /openapi/support/v3/api-docs

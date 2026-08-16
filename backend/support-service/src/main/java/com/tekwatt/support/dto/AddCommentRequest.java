@@ -1,0 +1,1 @@
+package com.tekwatt.support.dto;import jakarta.validation.constraints.NotBlank;import java.util.UUID;public record AddCommentRequest(UUID authorId,@NotBlank String authorName,@NotBlank String body,boolean internalNote){}

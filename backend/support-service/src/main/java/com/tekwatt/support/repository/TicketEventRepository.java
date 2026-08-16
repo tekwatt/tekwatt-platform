@@ -1,0 +1,1 @@
+package com.tekwatt.support.repository;import com.tekwatt.support.entity.TicketEvent;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface TicketEventRepository extends JpaRepository<TicketEvent,UUID>{List<TicketEvent>findAllByTicketIdOrderByCreatedAtAsc(UUID ticketId);}
