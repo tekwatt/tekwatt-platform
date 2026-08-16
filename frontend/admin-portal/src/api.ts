@@ -32,6 +32,7 @@ export type AmcContract={id:string;contractNumber:string;tenantId:string;partner
 export type RolePolicy={id:string;tenantId:string;roleName:string;permissionList:string[];systemRole:boolean;updatedAt:string};
 export type Administrator={id:string;tenantId:string;authUserId?:string;name:string;email:string;phone?:string;roleName:string;status:string;createdAt:string};
 export type AdminApiKey={id:string;tenantId:string;keyId:string;secret?:string;name:string;roleName:string;scopes:string;status:string;createdAt:string};
+export type Tariff={id:string;tenantId:string;code:string;name:string;energyPricePerKwh:number;timePricePerMinute:number;sessionFee:number;taxPercent:number;currency:string;status:string;validFrom:string;validTo?:string};
 
 class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -90,6 +91,9 @@ export const api = {
   rfidCards:(tenantId:string)=>request<RfidCard[]>(`/api/v1/users/directory/rfid-cards?tenantId=${encodeURIComponent(tenantId)}`),
   issueRfidCard:(body:Record<string,unknown>)=>request<RfidCard>('/api/v1/users/directory/rfid-cards',{method:'POST',body:JSON.stringify(body)}),
   setRfidStatus:(id:string,status:string)=>request<RfidCard>(`/api/v1/users/directory/rfid-cards/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
+  tariffs:(tenantId:string)=>request<Tariff[]>(`/api/v1/tariffs?tenantId=${encodeURIComponent(tenantId)}`),
+  createTariff:(body:Record<string,unknown>)=>request<Tariff>('/api/v1/tariffs',{method:'POST',body:JSON.stringify(body)}),
+  setTariffStatus:(id:string,status:string)=>request<Tariff>(`/api/v1/tariffs/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
   reports: async (tenantId: string) => pageContent(await request<{ content: Report[] }>(`/api/v1/reports?tenantId=${encodeURIComponent(tenantId)}&page=0&size=100`)),
   createReport: (body: { tenantId: string; reportType: string; format: string; from: string; to: string }) => request<Report>('/api/v1/reports', { method: 'POST', body: JSON.stringify(body) }),
   downloadReport: async (id: string, fileName = 'report') => {
