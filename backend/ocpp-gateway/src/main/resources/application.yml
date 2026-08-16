@@ -1,7 +1,7 @@
 spring:
   application.name: ocpp-gateway
   datasource:
-    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/tekwatt_ocpp?serverTimezone=UTC}
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/tekwatt_ocpp?serverTimezone=UTC&sslMode=DISABLED&allowPublicKeyRetrieval=true}
     username: ${DATABASE_USERNAME:tekwatt}
     password: ${DATABASE_PASSWORD:change-me}
   jpa:

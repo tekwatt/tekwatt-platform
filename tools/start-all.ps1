@@ -70,21 +70,36 @@ foreach ($service in $services) {
 $pidFile = Join-Path $logsDirectory "service-pids.json"
 $started | ConvertTo-Json | Set-Content -Path $pidFile -Encoding UTF8
 
+$healthPorts = @{}
+for ($index = 0; $index -lt $services.Count - 1; $index++) {
+    $healthPorts[$services[$index]] = 8081 + $index
+}
+$healthPorts["api-gateway"] = 8080
+
 $deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
-Write-Host "Waiting for API Gateway health..." -ForegroundColor Cyan
+Write-Host "Waiting for all TekWatt services..." -ForegroundColor Cyan
 do {
-    try {
-        $health = Invoke-RestMethod -Uri "http://localhost:8080/actuator/health" -TimeoutSec 3
-        if ($health.status -eq "UP") {
-            Write-Host "TekWatt Platform is UP." -ForegroundColor Green
-            Write-Host "Swagger: http://localhost:8080/swagger-ui.html" -ForegroundColor Cyan
-            exit 0
+    $unhealthy = @()
+    foreach ($service in $services) {
+        try {
+            $port = $healthPorts[$service]
+            $health = Invoke-RestMethod -Uri "http://localhost:$port/actuator/health" -TimeoutSec 2
+            if ($health.status -ne "UP") {
+                $unhealthy += $service
+            }
+        } catch {
+            $unhealthy += $service
         }
-    } catch {
-        Start-Sleep -Seconds 3
     }
+    if ($unhealthy.Count -eq 0) {
+        Write-Host "TekWatt Platform is UP. All $($services.Count) services are healthy." -ForegroundColor Green
+        Write-Host "Swagger: http://localhost:8080/swagger-ui.html" -ForegroundColor Cyan
+        exit 0
+    }
+    Start-Sleep -Seconds 3
 } while ((Get-Date) -lt $deadline)
 
-Write-Host "API Gateway did not become healthy within $StartupTimeoutSeconds seconds." -ForegroundColor Red
-Write-Host "Review: $logsDirectory\api-gateway-error.log" -ForegroundColor Yellow
+Write-Host "TekWatt Platform did not become fully healthy within $StartupTimeoutSeconds seconds." -ForegroundColor Red
+Write-Host "Unhealthy services: $($unhealthy -join ', ')" -ForegroundColor Yellow
+Write-Host "Review the matching service logs in: $logsDirectory" -ForegroundColor Yellow
 exit 1
