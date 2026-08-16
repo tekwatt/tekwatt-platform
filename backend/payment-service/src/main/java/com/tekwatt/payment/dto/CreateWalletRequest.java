@@ -1,0 +1,1 @@
+package com.tekwatt.payment.dto;import jakarta.validation.constraints.*;import java.util.UUID;public record CreateWalletRequest(@NotNull UUID tenantId,@NotNull UUID userId,@NotBlank@Size(min=3,max=3)String currency){}

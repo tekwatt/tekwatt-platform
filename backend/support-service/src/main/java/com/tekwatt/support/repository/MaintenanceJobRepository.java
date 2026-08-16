@@ -1,0 +1,1 @@
+package com.tekwatt.support.repository;import com.tekwatt.support.entity.MaintenanceJob;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface MaintenanceJobRepository extends JpaRepository<MaintenanceJob,UUID>{List<MaintenanceJob>findAllByTenantIdOrderByScheduledAtDesc(UUID tenantId);}

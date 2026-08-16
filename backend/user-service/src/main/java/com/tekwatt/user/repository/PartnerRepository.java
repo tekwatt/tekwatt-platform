@@ -1,0 +1,1 @@
+package com.tekwatt.user.repository;import com.tekwatt.user.entity.Partner;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface PartnerRepository extends JpaRepository<Partner,UUID>{List<Partner>findAllByTenantIdOrderByCreatedAtDesc(UUID tenantId);}

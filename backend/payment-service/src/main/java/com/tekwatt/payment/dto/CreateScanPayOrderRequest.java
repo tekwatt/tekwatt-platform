@@ -1,0 +1,1 @@
+package com.tekwatt.payment.dto;import jakarta.validation.constraints.*;import java.math.BigDecimal;import java.util.UUID;public record CreateScanPayOrderRequest(@NotNull UUID tenantId,@NotNull UUID userId,UUID stationId,UUID chargerId,@NotNull@DecimalMin("0.01")BigDecimal amount,@NotBlank@Size(min=3,max=3)String currency,@NotBlank String payload){}

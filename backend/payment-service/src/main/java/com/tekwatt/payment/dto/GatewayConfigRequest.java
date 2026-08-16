@@ -1,0 +1,1 @@
+package com.tekwatt.payment.dto;import jakarta.validation.constraints.NotBlank;public record GatewayConfigRequest(@NotBlank String provider,boolean enabled,String publicKey,String secretKey,String upiVpa,String payeeName){}

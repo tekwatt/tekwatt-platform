@@ -1,0 +1,1 @@
+package com.tekwatt.admin.dto;import jakarta.validation.constraints.*;import java.util.UUID;public record AdministratorRequest(UUID authUserId,@NotBlank String name,@NotBlank@Email String email,String phone,@NotBlank String roleName,String status){}

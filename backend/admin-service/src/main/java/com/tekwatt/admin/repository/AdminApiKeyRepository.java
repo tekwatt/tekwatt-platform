@@ -1,0 +1,1 @@
+package com.tekwatt.admin.repository;import com.tekwatt.admin.entity.AdminApiKey;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface AdminApiKeyRepository extends JpaRepository<AdminApiKey,UUID>{List<AdminApiKey>findAllByTenantIdOrderByCreatedAtDesc(UUID tenantId);}

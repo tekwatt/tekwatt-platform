@@ -18,6 +18,20 @@ export type SupportTicket = { id:string; ticketNumber:string; tenantId:string; r
 export type TicketComment = { id:string; ticketId:string; authorId?:string; authorName:string; body:string; internalNote:boolean; createdAt:string };
 export type TicketEvent = { id:string; ticketId:string; eventType:string; fromValue?:string; toValue?:string; actorName?:string; createdAt:string };
 export type TicketDetail = { ticket:SupportTicket; comments:TicketComment[]; history:TicketEvent[] };
+export type PaymentGateway = { id:string; tenantId:string; provider:string; enabled:boolean; publicKey?:string; secretConfigured:boolean; upiVpa?:string; payeeName?:string; updatedAt:string };
+export type Wallet = { id:string; tenantId:string; userId:string; balance:number; currency:string; status:string; updatedAt:string };
+export type WalletEntry = { id:string; walletId:string; amount:number; balanceAfter:number; reason:string; reference?:string; createdAt:string };
+export type ScanPayOrder = { id:string; orderNumber:string; tenantId:string; userId:string; stationId?:string; chargerId?:string; amount:number; currency:string; status:string; paymentId?:string; sessionId?:string; payload:string; createdAt:string };
+export type Invoice = { id:string;tenantId:string;userId:string;billId:string;invoiceNumber:string;customerName:string;customerEmail:string;subtotal:number;taxAmount:number;totalAmount:number;currency:string;status:string;issueDate:string;dueDate:string;createdAt:string };
+export type Bill = { id:string;tenantId:string;userId:string;billNumber:string;subtotal:number;taxAmount:number;totalAmount:number;currency:string;status:string;createdAt:string };
+export type Partner = {id:string;tenantId:string;companyName:string;contactName:string;email?:string;phone?:string;commissionPercent:number;status:string;createdAt:string};
+export type Technician = {id:string;tenantId:string;name:string;email:string;phone?:string;skills?:string;status:string;createdAt:string};
+export type RfidCard = {id:string;tenantId:string;cardUid:string;label?:string;userId?:string;notes?:string;status:string;issuedAt:string;revokedAt?:string};
+export type MaintenanceJob={id:string;jobNumber:string;tenantId:string;title:string;description?:string;type:string;stationId?:string;chargerId?:string;technicianId?:string;technicianName?:string;scheduledAt:string;status:string;createdAt:string};
+export type AmcContract={id:string;contractNumber:string;tenantId:string;partnerId:string;stationId:string;startDate:string;endDate:string;amount:number;currency:string;status:string;createdAt:string};
+export type RolePolicy={id:string;tenantId:string;roleName:string;permissionList:string[];systemRole:boolean;updatedAt:string};
+export type Administrator={id:string;tenantId:string;authUserId?:string;name:string;email:string;phone?:string;roleName:string;status:string;createdAt:string};
+export type AdminApiKey={id:string;tenantId:string;keyId:string;secret?:string;name:string;roleName:string;scopes:string;status:string;createdAt:string};
 
 class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -52,9 +66,30 @@ export const api = {
   sessions: (tenantId: string) => request<ChargingSession[]>(`/api/v1/charging-sessions?tenantId=${encodeURIComponent(tenantId)}`),
   payments: (tenantId: string) => request<Payment[]>(`/api/v1/payments?tenantId=${encodeURIComponent(tenantId)}`),
   refundPayment: (id: string) => request<Payment>(`/api/v1/payments/${id}/refund`, { method: 'POST' }),
+  bills: (tenantId:string)=>request<Bill[]>(`/api/v1/bills?tenantId=${encodeURIComponent(tenantId)}`),
+  invoices: (tenantId:string)=>request<Invoice[]>(`/api/v1/invoices?tenantId=${encodeURIComponent(tenantId)}`),
+  createInvoice: (body:Record<string,unknown>)=>request<Invoice>('/api/v1/invoices',{method:'POST',body:JSON.stringify(body)}),
+  invoiceAction: (id:string,action:'issue'|'pay'|'void')=>request<Invoice>(`/api/v1/invoices/${id}/${action}`,{method:'POST'}),
+  paymentGateways:(tenantId:string)=>request<PaymentGateway[]>(`/api/v1/payments/operations/gateways?tenantId=${encodeURIComponent(tenantId)}`),
+  savePaymentGateway:(tenantId:string,body:Record<string,unknown>)=>request<PaymentGateway>(`/api/v1/payments/operations/gateways?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
+  wallets:(tenantId:string)=>request<Wallet[]>(`/api/v1/payments/operations/wallets?tenantId=${encodeURIComponent(tenantId)}`),
+  createWallet:(body:{tenantId:string;userId:string;currency:string})=>request<Wallet>('/api/v1/payments/operations/wallets',{method:'POST',body:JSON.stringify(body)}),
+  walletEntries:(id:string)=>request<WalletEntry[]>(`/api/v1/payments/operations/wallets/${id}/entries`),
+  adjustWallet:(id:string,body:{amount:number;reason:string;reference?:string})=>request<Wallet>(`/api/v1/payments/operations/wallets/${id}/adjustments`,{method:'POST',body:JSON.stringify(body)}),
+  scanPayOrders:(tenantId:string)=>request<ScanPayOrder[]>(`/api/v1/payments/operations/scan-pay-orders?tenantId=${encodeURIComponent(tenantId)}`),
+  createScanPayOrder:(body:Record<string,unknown>)=>request<ScanPayOrder>('/api/v1/payments/operations/scan-pay-orders',{method:'POST',body:JSON.stringify(body)}),
   users: async (tenantId: string) => pageContent(await request<{ content: UserProfile[] }>(`/api/v1/users?tenantId=${encodeURIComponent(tenantId)}&page=0&size=100`)),
   createUser: (body: { authUserId: string; tenantId: string; firstName: string; lastName: string; email: string; phone?: string }) => request<UserProfile>('/api/v1/users', { method: 'POST', body: JSON.stringify(body) }),
   deactivateUser: (id: string) => request<void>(`/api/v1/users/${id}`, { method: 'DELETE' }),
+  partners:(tenantId:string)=>request<Partner[]>(`/api/v1/users/directory/partners?tenantId=${encodeURIComponent(tenantId)}`),
+  savePartner:(body:Record<string,unknown>,id?:string)=>request<Partner>(id?`/api/v1/users/directory/partners/${id}`:'/api/v1/users/directory/partners',{method:id?'PUT':'POST',body:JSON.stringify(body)}),
+  deletePartner:(id:string)=>request<void>(`/api/v1/users/directory/partners/${id}`,{method:'DELETE'}),
+  technicians:(tenantId:string)=>request<Technician[]>(`/api/v1/users/directory/technicians?tenantId=${encodeURIComponent(tenantId)}`),
+  saveTechnician:(body:Record<string,unknown>,id?:string)=>request<Technician>(id?`/api/v1/users/directory/technicians/${id}`:'/api/v1/users/directory/technicians',{method:id?'PUT':'POST',body:JSON.stringify(body)}),
+  deleteTechnician:(id:string)=>request<void>(`/api/v1/users/directory/technicians/${id}`,{method:'DELETE'}),
+  rfidCards:(tenantId:string)=>request<RfidCard[]>(`/api/v1/users/directory/rfid-cards?tenantId=${encodeURIComponent(tenantId)}`),
+  issueRfidCard:(body:Record<string,unknown>)=>request<RfidCard>('/api/v1/users/directory/rfid-cards',{method:'POST',body:JSON.stringify(body)}),
+  setRfidStatus:(id:string,status:string)=>request<RfidCard>(`/api/v1/users/directory/rfid-cards/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
   reports: async (tenantId: string) => pageContent(await request<{ content: Report[] }>(`/api/v1/reports?tenantId=${encodeURIComponent(tenantId)}&page=0&size=100`)),
   createReport: (body: { tenantId: string; reportType: string; format: string; from: string; to: string }) => request<Report>('/api/v1/reports', { method: 'POST', body: JSON.stringify(body) }),
   downloadReport: async (id: string, fileName = 'report') => {
@@ -89,5 +124,21 @@ export const api = {
   prioritizeSupportTicket: (id:string,body:{priority:string;actorId?:string;actorName?:string}) => request<SupportTicket>(`/api/v1/support/tickets/${id}/priority`,{method:'PATCH',body:JSON.stringify(body)}),
   transitionSupportTicket: (id:string,body:{status:string;actorId?:string;actorName?:string}) => request<SupportTicket>(`/api/v1/support/tickets/${id}/status`,{method:'PATCH',body:JSON.stringify(body)}),
   commentSupportTicket: (id:string,body:{authorId?:string;authorName:string;body:string;internalNote:boolean}) => request<TicketComment>(`/api/v1/support/tickets/${id}/comments`,{method:'POST',body:JSON.stringify(body)}),
+  maintenanceJobs:(tenantId:string)=>request<MaintenanceJob[]>(`/api/v1/support/maintenance-jobs?tenantId=${encodeURIComponent(tenantId)}`),
+  createMaintenanceJob:(body:Record<string,unknown>)=>request<MaintenanceJob>('/api/v1/support/maintenance-jobs',{method:'POST',body:JSON.stringify(body)}),
+  setMaintenanceStatus:(id:string,status:string)=>request<MaintenanceJob>(`/api/v1/support/maintenance-jobs/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
+  amcContracts:(tenantId:string)=>request<AmcContract[]>(`/api/v1/support/amc-contracts?tenantId=${encodeURIComponent(tenantId)}`),
+  createAmcContract:(body:Record<string,unknown>)=>request<AmcContract>('/api/v1/support/amc-contracts',{method:'POST',body:JSON.stringify(body)}),
+  setAmcStatus:(id:string,status:string)=>request<AmcContract>(`/api/v1/support/amc-contracts/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
   serviceStatus: async (slug: string) => { const response = await fetch(`${API_BASE}/openapi/${slug}/v3/api-docs`); return response.ok; },
+  roles:(tenantId:string)=>request<RolePolicy[]>(`/api/v1/admin/governance/roles?tenantId=${encodeURIComponent(tenantId)}`),
+  saveRole:(tenantId:string,body:{roleName:string;permissions:string[]})=>request<RolePolicy>(`/api/v1/admin/governance/roles?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
+  administrators:(tenantId:string)=>request<Administrator[]>(`/api/v1/admin/governance/administrators?tenantId=${encodeURIComponent(tenantId)}`),
+  saveAdministrator:(tenantId:string,body:Record<string,unknown>,id?:string)=>request<Administrator>(id?`/api/v1/admin/governance/administrators/${id}?tenantId=${encodeURIComponent(tenantId)}`:`/api/v1/admin/governance/administrators?tenantId=${encodeURIComponent(tenantId)}`,{method:id?'PUT':'POST',body:JSON.stringify(body)}),
+  deleteAdministrator:(id:string)=>request<void>(`/api/v1/admin/governance/administrators/${id}`,{method:'DELETE'}),
+  adminApiKeys:(tenantId:string)=>request<AdminApiKey[]>(`/api/v1/admin/governance/api-keys?tenantId=${encodeURIComponent(tenantId)}`),
+  createAdminApiKey:(tenantId:string,body:Record<string,unknown>)=>request<AdminApiKey>(`/api/v1/admin/governance/api-keys?tenantId=${encodeURIComponent(tenantId)}`,{method:'POST',body:JSON.stringify(body)}),
+  disableAdminApiKey:(id:string)=>request<AdminApiKey>(`/api/v1/admin/governance/api-keys/${id}/disable`,{method:'POST'}),
+  governanceSettings:(tenantId:string)=>request<Record<string,string>>(`/api/v1/admin/governance/settings?tenantId=${encodeURIComponent(tenantId)}`),
+  saveGovernanceSettings:(tenantId:string,body:Record<string,string>)=>request<Record<string,string>>(`/api/v1/admin/governance/settings?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
 };

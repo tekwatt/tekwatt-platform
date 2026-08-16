@@ -1,0 +1,1 @@
+package com.tekwatt.support.dto;import jakarta.validation.constraints.*;import java.time.Instant;import java.util.UUID;public record MaintenanceJobRequest(@NotNull UUID tenantId,@NotBlank String title,String description,@NotBlank String type,UUID stationId,UUID chargerId,UUID technicianId,String technicianName,@NotNull Instant scheduledAt){}

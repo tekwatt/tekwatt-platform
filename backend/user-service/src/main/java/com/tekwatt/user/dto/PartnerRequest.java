@@ -1,0 +1,1 @@
+package com.tekwatt.user.dto;import jakarta.validation.constraints.*;import java.math.BigDecimal;import java.util.UUID;public record PartnerRequest(@NotNull UUID tenantId,@NotBlank String companyName,@NotBlank String contactName,@Email String email,String phone,@NotNull@DecimalMin("0")@DecimalMax("100")BigDecimal commissionPercent,String status){}

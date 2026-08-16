@@ -1,0 +1,1 @@
+package com.tekwatt.payment.repository;import com.tekwatt.payment.entity.Wallet;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface WalletRepository extends JpaRepository<Wallet,UUID>{List<Wallet>findAllByTenantIdOrderByUpdatedAtDesc(UUID tenantId);Optional<Wallet>findByTenantIdAndUserId(UUID tenantId,UUID userId);}

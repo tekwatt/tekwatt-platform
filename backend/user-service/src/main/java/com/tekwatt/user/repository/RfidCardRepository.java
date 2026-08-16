@@ -1,0 +1,1 @@
+package com.tekwatt.user.repository;import com.tekwatt.user.entity.RfidCard;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface RfidCardRepository extends JpaRepository<RfidCard,UUID>{List<RfidCard>findAllByTenantIdOrderByIssuedAtDesc(UUID tenantId);boolean existsByCardUidIgnoreCase(String uid);}

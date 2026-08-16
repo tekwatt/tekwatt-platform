@@ -1,0 +1,1 @@
+package com.tekwatt.support.repository;import com.tekwatt.support.entity.AmcContract;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface AmcContractRepository extends JpaRepository<AmcContract,UUID>{List<AmcContract>findAllByTenantIdOrderByCreatedAtDesc(UUID tenantId);}

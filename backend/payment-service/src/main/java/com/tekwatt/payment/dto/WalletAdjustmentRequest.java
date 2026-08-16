@@ -1,0 +1,1 @@
+package com.tekwatt.payment.dto;import jakarta.validation.constraints.*;import java.math.BigDecimal;public record WalletAdjustmentRequest(@NotNull@DecimalMin(value="-1000000")@DecimalMax(value="1000000")BigDecimal amount,@NotBlank String reason,String reference){}

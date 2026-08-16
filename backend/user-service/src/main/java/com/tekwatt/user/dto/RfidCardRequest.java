@@ -1,0 +1,1 @@
+package com.tekwatt.user.dto;import jakarta.validation.constraints.*;import java.util.UUID;public record RfidCardRequest(@NotNull UUID tenantId,@NotBlank String cardUid,String label,UUID userId,String notes){}

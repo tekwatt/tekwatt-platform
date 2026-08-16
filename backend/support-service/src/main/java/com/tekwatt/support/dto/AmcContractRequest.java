@@ -1,0 +1,1 @@
+package com.tekwatt.support.dto;import jakarta.validation.constraints.*;import java.math.BigDecimal;import java.time.LocalDate;import java.util.UUID;public record AmcContractRequest(@NotNull UUID tenantId,@NotNull UUID partnerId,@NotNull UUID stationId,@NotNull LocalDate startDate,@NotNull LocalDate endDate,@NotNull@Positive BigDecimal amount,@NotBlank String currency){}

@@ -1,0 +1,1 @@
+package com.tekwatt.user.repository;import com.tekwatt.user.entity.Technician;import java.util.*;import org.springframework.data.jpa.repository.JpaRepository;public interface TechnicianRepository extends JpaRepository<Technician,UUID>{List<Technician>findAllByTenantIdOrderByCreatedAtDesc(UUID tenantId);}
