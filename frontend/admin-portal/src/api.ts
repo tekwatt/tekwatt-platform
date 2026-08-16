@@ -40,6 +40,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 const pageContent = <T>(value: { content?: T[] } | T[]) => Array.isArray(value) ? value : value.content ?? [];
 
 export const api = {
+  realtimeUrl: (tenantId: string) => `${API_BASE}/api/v1/admin/events?tenantId=${encodeURIComponent(tenantId)}`,
   login: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
   tenants: async () => pageContent(await request<{ content: Tenant[] }>('/api/v1/tenants?page=0&size=100')),

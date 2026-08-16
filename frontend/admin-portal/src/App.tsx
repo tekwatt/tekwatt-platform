@@ -88,9 +88,9 @@ function Sidebar({ page, setPage, open, close, chargerCount }: { page: Page; set
   </aside>;
 }
 
-function Header({ page, dark, toggleDark, openMenu, logout, navigate }: { page: Page; dark: boolean; toggleDark: () => void; openMenu: () => void; logout: () => void; navigate: (page: Page) => void }) {
+function Header({ page, dark, toggleDark, openMenu, logout, navigate, realtime }: { page: Page; dark: boolean; toggleDark: () => void; openMenu: () => void; logout: () => void; navigate: (page: Page) => void; realtime: 'live' | 'connecting' | 'offline' }) {
   const search = (value: string) => { const match = nav.find(item => item.label.toLowerCase().includes(value.toLowerCase())); if (match) navigate(match.label); };
-  return <header><button className="icon mobile-only" onClick={openMenu}><Menu /></button><div><small>OPERATIONS</small><h2>{page}</h2></div><div className="header-actions"><label className="search"><Search size={17} /><input placeholder="Search sections" onKeyDown={event => { if (event.key === 'Enter') search(event.currentTarget.value); }} /></label><span className="live"><i /> LIVE</span><button className="icon" onClick={toggleDark} aria-label="Toggle theme">{dark ? <Sun /> : <Moon />}</button><button className="icon notification" onClick={() => window.alert('No new platform notifications.')} aria-label="Notifications"><Bell /><i /></button><button className="profile" onClick={() => navigate('Settings')}><span className="avatar">BA</span><span><strong>Bharanidharan</strong><small>System Admin</small></span><ChevronDown size={16} /></button><button className="icon logout" onClick={logout} title="Sign out"><LogOut /></button></div></header>;
+  return <header><button className="icon mobile-only" onClick={openMenu}><Menu /></button><div><small>OPERATIONS</small><h2>{page}</h2></div><div className="header-actions"><label className="search"><Search size={17} /><input placeholder="Search sections" onKeyDown={event => { if (event.key === 'Enter') search(event.currentTarget.value); }} /></label><span className={`live ${realtime}`} title="Real-time server event connection"><i /> {realtime === 'live' ? 'LIVE' : realtime === 'connecting' ? 'RECONNECTING' : 'OFFLINE'}</span><button className="icon" onClick={toggleDark} aria-label="Toggle theme">{dark ? <Sun /> : <Moon />}</button><button className="icon notification" onClick={() => window.alert('No new platform notifications.')} aria-label="Notifications"><Bell /><i /></button><button className="profile" onClick={() => navigate('Settings')}><span className="avatar">BA</span><span><strong>Bharanidharan</strong><small>System Admin</small></span><ChevronDown size={16} /></button><button className="icon logout" onClick={logout} title="Sign out"><LogOut /></button></div></header>;
 }
 
 function Metric({ label, value, trend, icon: Icon, tone }: { label: string; value: string; trend: string; icon: typeof Gauge; tone: string }) {
@@ -245,9 +245,11 @@ function Portal({ logout, demo }: { logout: () => void; demo: boolean }) {
   const [data, setData] = useState<LiveData>({ chargers: [], connectors: [], sessions: [], payments: [], users: [], reports: [], notifications: [], connections: [], messages: [], firmwarePackages: [], firmwareJobs: [] });
   const [loading, setLoading] = useState(!demo);
   const [loadError, setLoadError] = useState('');
-  const refresh = async () => {
+  const [realtime, setRealtime] = useState<'live' | 'connecting' | 'offline'>(demo ? 'offline' : 'connecting');
+  const refresh = async (silent = false) => {
     if (demo) return;
-    setLoading(true); setLoadError('');
+    if (!silent) setLoading(true);
+    setLoadError('');
     try {
       const tenants = await api.tenants();
       if (!tenants.length) throw new Error('No tenant exists yet. Create a tenant in Swagger before loading operational data.');
@@ -266,6 +268,16 @@ function Portal({ logout, demo }: { logout: () => void; demo: boolean }) {
     finally { setLoading(false); }
   };
   useEffect(() => { void refresh(); }, [demo]);
+  useEffect(() => {
+    if (demo || !data.tenant) { setRealtime('offline'); return; }
+    setRealtime('connecting');
+    const source = new EventSource(api.realtimeUrl(data.tenant.id));
+    source.addEventListener('connected', () => setRealtime('live'));
+    source.addEventListener('refresh', () => { setRealtime('live'); void refresh(true); });
+    source.onerror = () => setRealtime('connecting');
+    const fallback = window.setInterval(() => void refresh(true), 15_000);
+    return () => { source.close(); window.clearInterval(fallback); };
+  }, [demo, data.tenant?.id]);
   const stationRows = demo ? stations : data.chargers.map((charger, index) => ({ name: charger.stationId, city: `${charger.vendor} ${charger.model}`, chargers: 1, power: charger.protocolVersion, status: charger.status === 'AVAILABLE' || charger.status === 'ONLINE' ? 'Online' : charger.status, usage: 35 + (index * 13) % 55 }));
   const sessionRows = demo ? sessions : data.sessions.map(session => ({ id: session.transactionId || session.id, station: data.chargers.find(charger => charger.id === session.chargerId)?.stationId ?? 'Unknown charger', energy: `${session.energyKwh ?? 0} kWh`, amount: `${session.currency ?? 'INR'} ${session.totalCost ?? 0}`, status: session.status, time: session.startedAt ? new Date(session.startedAt).toLocaleString() : '—' }));
   const body = useMemo(() => {
@@ -278,7 +290,7 @@ function Portal({ logout, demo }: { logout: () => void; demo: boolean }) {
     if (page === 'Support') return <SupportPage data={data} refresh={refresh}/>;
     return <SettingsPage data={data} refresh={refresh}/>;
   }, [page, data, demo, stationView, sessionView, reportView]);
-  return <div className={`app ${dark ? 'dark' : ''}`}><Sidebar page={page} setPage={setPage} open={menu} close={() => setMenu(false)} chargerCount={demo ? 5 : data.chargers.length} />{menu && <div className="scrim" onClick={() => setMenu(false)} />}<div className="shell"><Header page={page} dark={dark} toggleDark={() => setDark(!dark)} openMenu={() => setMenu(true)} logout={logout} navigate={setPage} /><main className="content">{demo && <div className="mode-banner">Demo data mode <button onClick={logout}>Connect backend</button></div>}{loading && <div className="loading-bar">Loading data from API Gateway…</div>}{loadError && <div className="api-error"><span>{loadError}</span><button onClick={refresh}>Retry</button></div>}{!loading && body}</main></div>{showAddStation && <AddStationModal tenant={data.tenant} close={() => setShowAddStation(false)} saved={refresh} />}</div>;
+  return <div className={`app ${dark ? 'dark' : ''}`}><Sidebar page={page} setPage={setPage} open={menu} close={() => setMenu(false)} chargerCount={demo ? 5 : data.chargers.length} />{menu && <div className="scrim" onClick={() => setMenu(false)} />}<div className="shell"><Header page={page} dark={dark} toggleDark={() => setDark(!dark)} openMenu={() => setMenu(true)} logout={logout} navigate={setPage} realtime={realtime} /><main className="content">{demo && <div className="mode-banner">Demo data mode <button onClick={logout}>Connect backend</button></div>}{loading && <div className="loading-bar">Loading data from API Gateway…</div>}{loadError && <div className="api-error"><span>{loadError}</span><button onClick={() => refresh()}>Retry</button></div>}{!loading && body}</main></div>{showAddStation && <AddStationModal tenant={data.tenant} close={() => setShowAddStation(false)} saved={() => refresh()} />}</div>;
 }
 
 export default function App() {
