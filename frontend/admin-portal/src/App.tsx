@@ -112,11 +112,22 @@ function Login({ onLogin, onDemo }: { onLogin: (email: string, password: string,
 
 function Sidebar({ page, activeView = '', navigate, setPage, open, close, chargerCount }: { page: Page; activeView?: string; navigate?: (page: Page, view?: string) => void; setPage?: (page: Page) => void; open: boolean; close: () => void; chargerCount: number }) {
   const [selectedView,setSelectedView]=useState('');
+  const [expanded,setExpanded]=useState<Page|null>(page);
+  useEffect(()=>setExpanded(page),[page]);
   const go=(target:Page,view?:string)=>{setSelectedView(view??'');if(navigate)navigate(target,view);else{setPage?.(target);window.dispatchEvent(new CustomEvent('tekwatt:navigate',{detail:{target,view}}));}};
   return <aside className={`sidebar ${open ? 'open' : ''}`}>
     <div className="sidebar-head"><Brand /><button className="icon mobile-only" onClick={close}><X /></button></div>
     <div className="workspace"><span className="avatar mini">TW</span><div><small>WORKSPACE</small><strong>TekWatt India</strong></div><ChevronDown size={16} /></div>
-    <nav>{nav.map(item => <div className="nav-group" key={item.label}><button className={`nav-parent ${page === item.label ? 'active' : ''}`} onClick={() => { go(item.label, navigationScreens[item.label]?.[0]); close(); }}><item.icon size={19} /><span>{item.display ?? item.label}</span>{item.label === 'Stations' && <em>{chargerCount}</em>}{navigationScreens[item.label]&&<ChevronDown className="nav-chevron" size={14}/>}</button>{page===item.label&&navigationScreens[item.label]&&<div className="nav-children">{navigationScreens[item.label]!.map(screen=><button key={screen} className={(activeView||selectedView)===screen?'active':''} onClick={()=>{go(item.label,screen);close();}}><Zap className="submenu-bolt" size={11}/>{screen}</button>)}</div>}</div>)}</nav>
+    <nav>{nav.map(item => {
+      const hasChildren=Boolean(navigationScreens[item.label]);
+      const isExpanded=expanded===item.label;
+      return <div className="nav-group" key={item.label}><button className={`nav-parent ${page === item.label ? 'active' : ''}`} aria-expanded={hasChildren?isExpanded:undefined} onClick={() => {
+        if(hasChildren&&isExpanded){setExpanded(null);return;}
+        setExpanded(hasChildren?item.label:null);
+        if(page!==item.label)go(item.label,navigationScreens[item.label]?.[0]);
+        if(!hasChildren)close();
+      }}><item.icon size={19} /><span>{item.display ?? item.label}</span>{item.label === 'Stations' && <em>{chargerCount}</em>}{hasChildren&&<ChevronDown className={`nav-chevron ${isExpanded?'open':''}`} size={14}/>}</button>{isExpanded&&navigationScreens[item.label]&&<div className="nav-children">{navigationScreens[item.label]!.map(screen=><button key={screen} className={(activeView||selectedView)===screen?'active':''} onClick={()=>{go(item.label,screen);close();}}><Zap className="submenu-bolt" size={11}/>{screen}</button>)}</div>}</div>;
+    })}</nav>
     <div className="sidebar-foot"><div className="health-dot" /><div><strong>All systems operational</strong><small>Updated just now</small></div></div>
   </aside>;
 }
@@ -428,7 +439,7 @@ function Portal({ logout, demo }: { logout: () => void; demo: boolean }) {
     if (page === 'Admins') return <><Subnav items={navigationScreens.Admins!} active={adminView} select={setAdminView}/>{adminView==='API Keys'?<ApiKeysPage data={data} refresh={refresh}/>:adminView==='Install Modules'?<InstallModulesPage data={data} refresh={refresh}/>:<AdministratorsPage data={data} refresh={refresh}/>}</>;
     return <><Subnav items={['General Settings','Account Settings']} active={settingsView} select={setSettingsView}/>{settingsView==='Account Settings'?<SettingsPage data={data} refresh={refresh}/>:<GeneralSettingsPage data={data} refresh={refresh}/>}</>;
   }, [page, data, demo, stationView, sessionView, reportView, paymentView, userView, managerView, contentView, supportView, adminView, settingsView]);
-  return <div className={`app ${dark ? 'dark' : ''}`}><Sidebar page={page} setPage={setPage} open={menu} close={() => setMenu(false)} chargerCount={demo ? 5 : data.chargers.length} />{menu && <div className="scrim" onClick={() => setMenu(false)} />}<div className="shell"><Header page={page} dark={dark} toggleDark={() => setDark(!dark)} openMenu={() => setMenu(true)} logout={logout} navigate={setPage} realtime={realtime} /><main className="content">{demo && <div className="mode-banner">Demo data mode <button onClick={logout}>Connect backend</button></div>}{loading && <div className="loading-bar">Loading data from API Gateway…</div>}{loadError && <div className="api-error"><span>{loadError}</span><button onClick={() => refresh()}>Retry</button></div>}{!loading && body}</main></div>{showAddStation&&<AddStationModal data={data} close={()=>setShowAddStation(false)} saved={()=>refresh()}/>} {showAddCharger&&<AddChargerModal data={data} close={()=>setShowAddCharger(false)} saved={()=>refresh()}/>}</div>;
+  return <div className={`app ${dark ? 'dark' : ''}`}><Sidebar page={page} activeView={activeView} navigate={navigateTo} open={menu} close={() => setMenu(false)} chargerCount={demo ? 5 : data.chargers.length} />{menu && <div className="scrim" onClick={() => setMenu(false)} />}<div className="shell"><Header page={page} dark={dark} toggleDark={() => setDark(!dark)} openMenu={() => setMenu(true)} logout={logout} navigate={setPage} realtime={realtime} /><main className="content">{demo && <div className="mode-banner">Demo data mode <button onClick={logout}>Connect backend</button></div>}{loading && <div className="loading-bar">Loading data from API Gateway…</div>}{loadError && <div className="api-error"><span>{loadError}</span><button onClick={() => refresh()}>Retry</button></div>}{!loading && body}</main></div>{showAddStation&&<AddStationModal data={data} close={()=>setShowAddStation(false)} saved={()=>refresh()}/>} {showAddCharger&&<AddChargerModal data={data} close={()=>setShowAddCharger(false)} saved={()=>refresh()}/>}</div>;
 }
 
 export default function App() {
