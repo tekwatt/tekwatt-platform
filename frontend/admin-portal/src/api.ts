@@ -39,7 +39,20 @@ class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+type MutationListener = (pending: number) => void;
+const mutationListeners = new Set<MutationListener>();
+const inFlightMutations = new Map<string, Promise<unknown>>();
+let pendingMutations = 0;
+
+const publishMutationActivity = () => mutationListeners.forEach(listener => listener(pendingMutations));
+
+export function subscribeApiMutations(listener: MutationListener) {
+  mutationListeners.add(listener);
+  listener(pendingMutations);
+  return () => { mutationListeners.delete(listener); };
+}
+
+async function performRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = sessionStorage.getItem('tekwatt-access-token');
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -55,6 +68,29 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(message, response.status);
   }
   return response.status === 204 ? undefined as T : response.json() as Promise<T>;
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method ?? 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return performRequest<T>(path, options);
+
+  // Identical writes share one promise. This prevents a rapid double-click from
+  // creating the same record twice, even before React has redrawn the button.
+  const key = `${method}:${path}:${typeof options.body === 'string' ? options.body : ''}`;
+  const existing = inFlightMutations.get(key);
+  if (existing) return existing as Promise<T>;
+
+  pendingMutations += 1;
+  publishMutationActivity();
+  const operation = performRequest<T>(path, options);
+  inFlightMutations.set(key, operation);
+  try {
+    return await operation;
+  } finally {
+    inFlightMutations.delete(key);
+    pendingMutations = Math.max(0, pendingMutations - 1);
+    publishMutationActivity();
+  }
 }
 
 const pageContent = <T>(value: { content?: T[] } | T[]) => Array.isArray(value) ? value : value.content ?? [];
