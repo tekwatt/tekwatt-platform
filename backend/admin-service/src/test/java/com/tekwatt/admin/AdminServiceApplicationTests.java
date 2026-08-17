@@ -28,6 +28,6 @@ class AdminServiceApplicationTests {
             assertThat(role.getPermissionList()).isNotEmpty();
         });
         assertThat(roles.stream().filter(role -> role.getRoleName().equals("ADMIN")).findFirst().orElseThrow().getPermissionList())
-            .contains("Roles", "Administrators", "API Keys", "Settings");
+            .contains("Roles", "Administrators", "API Keys", "Install Modules", "General Settings", "Account Settings");
     }
 }
