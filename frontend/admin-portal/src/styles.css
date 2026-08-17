@@ -126,6 +126,7 @@ header h2 { font-size:16px; }
 .status { display:inline-block; font-size:9px; font-weight:700; border-radius:10px; padding:4px 8px; color:#659d00; background:#f0f9df; }.status.maintenance{color:#b1720d;background:#fff3dc}.status.charging{color:#008fc8;background:#e8f7fc}
 .responsive-table { overflow:auto; margin-top:13px; }
 table { width:100%; border-collapse:collapse; min-width:590px; }
+.manager-table table { min-width:1050px; }
 th { color:var(--muted); font-size:9px; letter-spacing:.08em; text-align:left; padding:9px; border-bottom:1px solid var(--line); }
 td { padding:11px 9px; border-bottom:1px solid var(--line); font-size:10px; color:var(--muted); }
 td:first-child { display:grid; }td strong{color:var(--ink);font-size:10px}td small{font-size:8px;margin-top:2px}
