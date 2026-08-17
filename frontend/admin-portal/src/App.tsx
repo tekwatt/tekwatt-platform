@@ -54,7 +54,7 @@ const sessions = [
 ];
 
 function Brand({ compact = false }: { compact?: boolean }) {
-  return <div className="brand"><span className="brand-mark"><Zap size={22} fill="currentColor" /></span>{!compact && <span>TekWatt <b>Nexus</b></span>}</div>;
+  return <div className={`brand ${compact ? 'compact' : ''}`}><img className="brand-logo" src="/logo-sidebar.webp" alt="TekWatt Nexus — Smart EV Charging Solutions" /></div>;
 }
 
 function Login({ onLogin, onDemo }: { onLogin: (email: string, password: string, register: boolean) => Promise<void>; onDemo: () => void }) {
