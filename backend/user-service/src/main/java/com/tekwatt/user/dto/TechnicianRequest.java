@@ -1,1 +1,1 @@
-package com.tekwatt.user.dto;import jakarta.validation.constraints.*;import java.util.UUID;public record TechnicianRequest(@NotNull UUID tenantId,@NotBlank String name,@NotBlank@Email String email,String phone,String skills,String status){}
+package com.tekwatt.user.dto;import jakarta.validation.constraints.*;import java.util.UUID;public record TechnicianRequest(@NotNull UUID tenantId,@NotBlank String name,@NotBlank@Email String email,String phone,String skills,String status,UUID authUserId){}

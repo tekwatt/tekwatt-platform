@@ -155,6 +155,9 @@ td:first-child { display:grid; }td strong{color:var(--ink);font-size:10px}td sma
 .form-grid input,.form-grid select { width:100%; min-height:36px; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; outline:none; font-size:11px; }.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus{border-color:#029ed3;box-shadow:0 0 0 3px #029ed31c}.form-grid input:user-invalid,.form-grid select:user-invalid,.form-grid textarea:user-invalid{color:#b42318;border-color:#d92d20;background:#fff7f6;box-shadow:0 0 0 3px #d92d2014}.form-grid input:user-invalid:focus,.form-grid select:user-invalid:focus,.form-grid textarea:user-invalid:focus{box-shadow:0 0 0 3px #d92d2024}.form-grid input:user-valid:not(:placeholder-shown),.form-grid select:user-valid{border-color:#9dcf45}
 .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
 .inline-form,.settings-form { margin-bottom:18px; }
+.directory-form .card-head { margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--line); }
+.directory-form label>small { color:var(--muted); font-size:9px; font-weight:500; margin-top:-2px; }
+.directory-table table { min-width:920px; }
 .settings-form { max-width:760px; }
 .form-grid textarea { min-height:82px; resize:vertical; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 10px; outline:none; font:inherit; font-size:11px; }
 .action-group { display:flex; align-items:center; gap:7px; }.action-group select{min-height:34px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:11px}

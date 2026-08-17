@@ -6,7 +6,7 @@ export type Charger = { id:string;tenantId:string;organizationId?:string;station
 export type CreateChargerRequest = Omit<Charger,'id'|'status'|'lastHeartbeat'>;
 export type ChargingSession = { id: string; transactionId: string; chargerId: string; status: string; energyKwh?: number; totalCost?: number; currency?: string; startedAt?: string; stoppedAt?: string };
 export type Payment = { id: string; amount?: number; currency?: string; status?: string; createdAt?: string };
-export type UserProfile = { id: string; firstName?: string; lastName?: string; email: string; status?: string };
+export type UserProfile = { id: string; authUserId?:string; tenantId?:string; firstName?: string; lastName?: string; fullName?:string; email: string; phone?:string; city?:string; zipcode?:string; status?: string; createdAt?:string; updatedAt?:string };
 export type Report = { id: string; type?: string; fileName?: string; status?: string; createdAt?: string };
 export type Notification = { id: string; channel: string; recipient: string; subject?: string; body: string; status: string; createdAt?: string };
 export type Connector = { id: string; tenantId: string; chargerId: string; connectorNumber: number; type: string; maxPowerKw: number; maxVoltage: number; maxCurrent: number; status: string };
@@ -25,8 +25,8 @@ export type WalletEntry = { id:string; walletId:string; amount:number; balanceAf
 export type ScanPayOrder = { id:string; orderNumber:string; tenantId:string; userId:string; stationId?:string; chargerId?:string; amount:number; currency:string; status:string; paymentId?:string; sessionId?:string; payload:string; createdAt:string };
 export type Invoice = { id:string;tenantId:string;userId:string;billId:string;invoiceNumber:string;customerName:string;customerEmail:string;subtotal:number;taxAmount:number;totalAmount:number;currency:string;status:string;issueDate:string;dueDate:string;createdAt:string };
 export type Bill = { id:string;tenantId:string;userId:string;billNumber:string;subtotal:number;taxAmount:number;totalAmount:number;currency:string;status:string;createdAt:string };
-export type Partner = {id:string;tenantId:string;companyName:string;contactName:string;email?:string;phone?:string;commissionPercent:number;status:string;createdAt:string};
-export type Technician = {id:string;tenantId:string;name:string;email:string;phone?:string;skills?:string;status:string;createdAt:string};
+export type Partner = {id:string;tenantId:string;companyName:string;partnerUniqueId:string;contactName:string;email?:string;phone?:string;commissionPercent:number;status:string;address?:string;appLoginEmail?:string;authUserId?:string;createdAt:string};
+export type Technician = {id:string;tenantId:string;name:string;email:string;phone?:string;skills?:string;status:string;authUserId?:string;createdAt:string};
 export type RfidCard = {id:string;tenantId:string;cardUid:string;label?:string;userId?:string;notes?:string;status:string;issuedAt:string;revokedAt?:string};
 export type MaintenanceJob={id:string;jobNumber:string;tenantId:string;title:string;description?:string;type:string;stationId?:string;chargerId?:string;technicianId?:string;technicianName?:string;scheduledAt:string;status:string;createdAt:string};
 export type AmcContract={id:string;contractNumber:string;tenantId:string;partnerId:string;stationId:string;startDate:string;endDate:string;amount:number;currency:string;status:string;createdAt:string};
@@ -81,7 +81,8 @@ export const api = {
   scanPayOrders:(tenantId:string)=>request<ScanPayOrder[]>(`/api/v1/payments/operations/scan-pay-orders?tenantId=${encodeURIComponent(tenantId)}`),
   createScanPayOrder:(body:Record<string,unknown>)=>request<ScanPayOrder>('/api/v1/payments/operations/scan-pay-orders',{method:'POST',body:JSON.stringify(body)}),
   users: async (tenantId: string) => pageContent(await request<{ content: UserProfile[] }>(`/api/v1/users?tenantId=${encodeURIComponent(tenantId)}&page=0&size=100`)),
-  createUser: (body: { authUserId: string; tenantId: string; firstName: string; lastName: string; email: string; phone?: string }) => request<UserProfile>('/api/v1/users', { method: 'POST', body: JSON.stringify(body) }),
+  createUser: (body: { authUserId: string; tenantId: string; firstName: string; lastName: string; fullName?:string; email: string; phone?: string; city?:string; zipcode?:string; status?:string }) => request<UserProfile>('/api/v1/users', { method: 'POST', body: JSON.stringify(body) }),
+  updateUser: (id:string,body:{firstName:string;lastName:string;fullName?:string;email:string;phone?:string;city?:string;zipcode?:string;status?:string})=>request<UserProfile>(`/api/v1/users/${id}`,{method:'PUT',body:JSON.stringify(body)}),
   deactivateUser: (id: string) => request<void>(`/api/v1/users/${id}`, { method: 'DELETE' }),
   partners:(tenantId:string)=>request<Partner[]>(`/api/v1/users/directory/partners?tenantId=${encodeURIComponent(tenantId)}`),
   savePartner:(body:Record<string,unknown>,id?:string)=>request<Partner>(id?`/api/v1/users/directory/partners/${id}`:'/api/v1/users/directory/partners',{method:id?'PUT':'POST',body:JSON.stringify(body)}),
