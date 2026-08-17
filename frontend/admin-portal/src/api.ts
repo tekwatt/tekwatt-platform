@@ -2,7 +2,8 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 export type TokenResponse = { accessToken: string; refreshToken: string; tokenType: string; expiresIn: number };
 export type Tenant = { id: string; name: string; code?: string; status?: string };
-export type Charger = { id: string; tenantId: string; stationId: string; serialNumber: string; vendor: string; model: string; protocolVersion: string; status: string; lastHeartbeat?: string };
+export type Charger = { id:string;tenantId:string;organizationId?:string;stationId:string;serialNumber:string;vendor:string;model:string;protocolVersion:string;stationName?:string;address?:string;city?:string;state?:string;description?:string;latitude?:number;longitude?:number;stationStatus?:string;openingHours?:string;powerKw?:number;pricePerKwh?:number;contactPhone?:string;contactEmail?:string;firmwareVersion?:string;meterSerialNumber?:string;simNumber?:string;status:string;lastHeartbeat?:string };
+export type CreateChargerRequest = Omit<Charger,'id'|'status'|'lastHeartbeat'>;
 export type ChargingSession = { id: string; transactionId: string; chargerId: string; status: string; energyKwh?: number; totalCost?: number; currency?: string; startedAt?: string; stoppedAt?: string };
 export type Payment = { id: string; amount?: number; currency?: string; status?: string; createdAt?: string };
 export type UserProfile = { id: string; firstName?: string; lastName?: string; email: string; status?: string };
@@ -106,7 +107,7 @@ export const api = {
   createNotification: (body: { tenantId: string; idempotencyKey: string; channel: string; recipient: string; subject?: string; body: string; maxAttempts: number }) => request<Notification>('/api/v1/notifications', { method: 'POST', body: JSON.stringify(body) }),
   sendNotification: (id: string) => request<Notification>(`/api/v1/notifications/${id}/send`, { method: 'POST' }),
   updateTenant: (id: string, body: { name: string; slug: string; contactEmail: string }) => request<Tenant>(`/api/v1/tenants/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
-  createCharger: (body: { tenantId: string; stationId: string; serialNumber: string; vendor: string; model: string; protocolVersion: string }) => request<Charger>('/api/v1/chargers', { method: 'POST', body: JSON.stringify(body) }),
+  createCharger: (body: CreateChargerRequest) => request<Charger>('/api/v1/chargers', { method: 'POST', body: JSON.stringify(body) }),
   setChargerStatus: (id: string, status: string) => request<Charger>(`/api/v1/chargers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   heartbeatCharger: (id: string) => request<Charger>(`/api/v1/chargers/${id}/heartbeat`, { method: 'POST' }),
   connectors: (chargerId: string) => request<Connector[]>(`/api/v1/connectors?chargerId=${encodeURIComponent(chargerId)}`),

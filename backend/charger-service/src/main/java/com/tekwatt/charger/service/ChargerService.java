@@ -18,7 +18,12 @@ public class ChargerService {
 
     public ChargerResponse create(ChargerRequest request) {
         if (repository.existsByStationId(request.stationId())) throw new ResponseStatusException(HttpStatus.CONFLICT, "Station ID already exists");
-        return map(repository.save(new Charger(request.tenantId(), request.organizationId(), request.stationId(), request.serialNumber(), request.vendor(), request.model(), request.protocolVersion())));
+        return map(repository.save(new Charger(request.tenantId(), request.organizationId(), request.stationId(),
+                request.serialNumber(), request.vendor(), request.model(), request.protocolVersion(),
+                request.stationName(), request.address(), request.city(), request.state(), request.description(),
+                request.latitude(), request.longitude(), request.stationStatus(), request.openingHours(),
+                request.powerKw(), request.pricePerKwh(), request.contactPhone(), request.contactEmail(),
+                request.firmwareVersion(), request.meterSerialNumber(), request.simNumber())));
     }
     @Transactional(readOnly = true) public ChargerResponse get(UUID id) { return map(find(id)); }
     @Transactional(readOnly = true) public List<ChargerResponse> list(UUID tenantId) { return repository.findAllByTenantIdOrderByCreatedAtDesc(tenantId).stream().map(this::map).toList(); }
@@ -26,11 +31,20 @@ public class ChargerService {
         Charger charger = find(id);
         if (!charger.getTenantId().equals(request.tenantId()) || !charger.getStationId().equals(request.stationId()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tenantId and stationId cannot be changed");
-        charger.update(request.organizationId(), request.serialNumber(), request.vendor(), request.model(), request.protocolVersion());
+        charger.update(request.organizationId(), request.serialNumber(), request.vendor(), request.model(),
+                request.protocolVersion(), request.stationName(), request.address(), request.city(), request.state(),
+                request.description(), request.latitude(), request.longitude(), request.stationStatus(),
+                request.openingHours(), request.powerKw(), request.pricePerKwh(), request.contactPhone(),
+                request.contactEmail(), request.firmwareVersion(), request.meterSerialNumber(), request.simNumber());
         return map(charger);
     }
     public ChargerResponse updateStatus(UUID id, ChargerStatusRequest request) { Charger c = find(id); c.changeStatus(request.status()); return map(c); }
     public ChargerResponse heartbeat(UUID id) { Charger c = find(id); c.recordHeartbeat(); return map(c); }
     private Charger find(UUID id) { return repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Charger not found")); }
-    private ChargerResponse map(Charger c) { return new ChargerResponse(c.getId(), c.getTenantId(), c.getOrganizationId(), c.getStationId(), c.getSerialNumber(), c.getVendor(), c.getModel(), c.getProtocolVersion(), c.getStatus(), c.getLastHeartbeat(), c.getCreatedAt(), c.getUpdatedAt()); }
+    private ChargerResponse map(Charger c) { return new ChargerResponse(c.getId(), c.getTenantId(), c.getOrganizationId(),
+            c.getStationId(), c.getSerialNumber(), c.getVendor(), c.getModel(), c.getProtocolVersion(),
+            c.getStationName(), c.getAddress(), c.getCity(), c.getState(), c.getDescription(), c.getLatitude(),
+            c.getLongitude(), c.getStationStatus(), c.getOpeningHours(), c.getPowerKw(), c.getPricePerKwh(),
+            c.getContactPhone(), c.getContactEmail(), c.getFirmwareVersion(), c.getMeterSerialNumber(),
+            c.getSimNumber(), c.getStatus(), c.getLastHeartbeat(), c.getCreatedAt(), c.getUpdatedAt()); }
 }
