@@ -1,7 +1,7 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 export type TokenResponse = { accessToken: string; refreshToken: string; tokenType: string; expiresIn: number };
-export type Tenant = { id: string; name: string; code?: string; status?: string };
+export type Tenant = { id: string; name: string; slug:string; contactEmail:string; status?: string; createdAt?:string; updatedAt?:string };
 export type Charger = { id:string;tenantId:string;organizationId?:string;stationId:string;serialNumber:string;vendor:string;model:string;protocolVersion:string;stationName?:string;address?:string;city?:string;state?:string;description?:string;latitude?:number;longitude?:number;stationStatus?:string;openingHours?:string;powerKw?:number;pricePerKwh?:number;contactPhone?:string;contactEmail?:string;firmwareVersion?:string;meterSerialNumber?:string;simNumber?:string;status:string;lastHeartbeat?:string };
 export type CreateChargerRequest = Omit<Charger,'id'|'status'|'lastHeartbeat'>;
 export type ChargingSession = { id: string; transactionId: string; userId?: string; chargerId: string; connectorId:string; tariffId?:string; status: string; meterStartWh?:number; meterStopWh?:number; energyKwh?: number; pricePerKwh?:number; timePricePerMinute?:number; sessionFee?:number; taxPercent?:number; totalCost?: number; currency?: string; startedAt?: string; stoppedAt?: string; updatedAt?:string };
@@ -102,6 +102,7 @@ export const api = {
   login: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
   tenants: async () => pageContent(await request<{ content: Tenant[] }>('/api/v1/tenants?page=0&size=100')),
+  createTenant: (body:{name:string;slug:string;contactEmail:string}) => request<Tenant>('/api/v1/tenants',{method:'POST',body:JSON.stringify(body)}),
   chargers: (tenantId: string) => request<Charger[]>(`/api/v1/chargers?tenantId=${encodeURIComponent(tenantId)}`),
   sessions: (tenantId: string) => request<ChargingSession[]>(`/api/v1/charging-sessions?tenantId=${encodeURIComponent(tenantId)}`),
   startSession: (body:{tenantId:string;userId:string;chargerId:string;connectorId:string;transactionId:string;meterStartWh:number;currency?:string}) => request<ChargingSession>('/api/v1/charging-sessions',{method:'POST',body:JSON.stringify(body)}),

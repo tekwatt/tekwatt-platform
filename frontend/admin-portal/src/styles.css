@@ -57,10 +57,11 @@ p { color:var(--muted); }
 .sidebar { position:fixed; inset:0 auto 0 0; width:255px; padding:12px 18px 18px; background:linear-gradient(180deg,#030609 0%,var(--nav) 40%,#06131c 100%); color:#b8ccd6; z-index:20; display:flex; flex-direction:column; border-right:1px solid #0d3345; }
 .sidebar-head { min-height:122px; padding:0 1px 7px; display:flex; align-items:center; justify-content:space-between; }
 .sidebar .brand-logo { max-width:184px; margin:auto; }
-.workspace { border:1px solid #ffffff13; background:#ffffff08; border-radius:11px; padding:8px; display:flex; align-items:center; gap:9px; margin-bottom:14px; }
-.workspace div { flex:1; display:grid; gap:2px; }
+.workspace-switcher{position:relative;margin-bottom:14px}.workspace { border:1px solid #ffffff13; background:#ffffff08; border-radius:11px; padding:8px; display:flex; align-items:center; gap:9px; width:100%;text-align:left;color:inherit; }
+.workspace>span:nth-child(2) { flex:1; display:grid; gap:2px;min-width:0 }
 .workspace small,.sidebar-foot small { color:#7593a1; font-size:9px; letter-spacing:.08em; }
-.workspace strong { color:white; font-size:12px; }
+.workspace strong { color:white; font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }.workspace>svg{transition:transform .2s}.workspace>svg.open{transform:rotate(180deg)}
+.workspace-menu{position:absolute;z-index:30;top:calc(100% + 5px);left:0;right:0;padding:5px;background:#071922;border:1px solid #1a4151;border-radius:9px;box-shadow:0 14px 35px #0008;display:grid;gap:2px}.workspace-menu button{border:0;background:transparent;color:#b8ccd6;border-radius:6px;padding:8px;text-align:left;display:grid;gap:2px;font-size:11px}.workspace-menu button:hover,.workspace-menu button.active{background:#0b3040;color:white}.workspace-menu button small{color:#7593a1;font-size:9px}.workspace-menu .workspace-manage{border-top:1px solid #183744;margin-top:3px;padding-top:10px;color:#93d51c;display:flex;align-items:center;gap:6px}
 .avatar { background:linear-gradient(135deg,#93d51c,#08aee0); color:#041018; display:grid; place-items:center; width:35px; height:35px; border-radius:10px; font-weight:800; font-size:12px; }
 .avatar.mini { width:32px; height:32px; }
 .sidebar nav { display:grid; gap:2px; overflow-y:auto; min-height:0; padding-right:3px; }
@@ -164,6 +165,7 @@ td:first-child { display:grid; }td strong{color:var(--ink);font-size:10px}td sma
 .form-section-title { grid-column:1/-1; padding:6px 0 10px; border-bottom:1px solid var(--line); color:#008fc8; font-size:14px; }
 .form-grid input,.form-grid select { width:100%; min-height:36px; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; outline:none; font-size:11px; }.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus{border-color:#029ed3;box-shadow:0 0 0 3px #029ed31c}.form-grid input:user-invalid,.form-grid select:user-invalid,.form-grid textarea:user-invalid{color:#b42318;border-color:#d92d20;background:#fff7f6;box-shadow:0 0 0 3px #d92d2014}.form-grid input:user-invalid:focus,.form-grid select:user-invalid:focus,.form-grid textarea:user-invalid:focus{box-shadow:0 0 0 3px #d92d2024}.form-grid input:user-valid:not(:placeholder-shown),.form-grid select:user-valid{border-color:#9dcf45}
 .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+.workspace-admin-list{display:flex;gap:6px;overflow-x:auto;padding:2px 1px 14px;margin-bottom:16px;border-bottom:1px solid var(--line)}.workspace-admin-list button{flex:0 0 auto;min-width:130px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:9px;padding:9px 11px;text-align:left;display:grid;gap:3px}.workspace-admin-list button.active{border-color:#08aee0;background:#08aee012}.workspace-admin-list button small{color:var(--muted);font-size:9px}.workspace-admin-list .new-workspace{display:flex;align-items:center;justify-content:center;gap:6px;color:#008fc8}
 .inline-form,.settings-form { margin-bottom:18px; }
 .directory-form .card-head { margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--line); }
 .directory-form label>small { color:var(--muted); font-size:9px; font-weight:500; margin-top:-2px; }

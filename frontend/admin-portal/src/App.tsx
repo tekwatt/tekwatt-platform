@@ -19,8 +19,8 @@ function decodeAccessToken(token:string){const part=token.split('.')[1];if(!part
 async function resolveLoginIdentity(token:string,email:string,firstAccount=false):Promise<LoginIdentity>{
   const claims=decodeAccessToken(token);const normalizedEmail=(claims.email??email).trim().toLowerCase();
   try{
-    const tenants=await api.tenants();const tenant=tenants[0];
-    if(tenant){
+    const tenants=await api.tenants();
+    for(const tenant of tenants){
       const results=await Promise.allSettled([api.users(tenant.id),api.partners(tenant.id),api.technicians(tenant.id),api.administrators(tenant.id)]);
       const values=<T,>(index:number):T[]=>results[index].status==='fulfilled'?results[index].value as T[]:[];
       const admin=values<Administrator>(3).find(item=>item.authUserId===claims.sub||item.email.toLowerCase()===normalizedEmail);if(admin)return{userId:claims.sub,email:normalizedEmail,name:admin.name,role:'ADMIN'};
@@ -134,14 +134,15 @@ function Login({ onLogin, onDemo }: { onLogin: (email: string, password: string,
   </main>;
 }
 
-function Sidebar({ page, activeView = '', navigate, setPage, open, close, chargerCount, permissions }: { page: Page; activeView?: string; navigate?: (page: Page, view?: string) => void; setPage?: (page: Page) => void; open: boolean; close: () => void; chargerCount: number; permissions:Set<string> }) {
+function Sidebar({ page, activeView = '', navigate, setPage, open, close, chargerCount, permissions, tenants, selectedTenantId, selectTenant, manageWorkspaces }: { page: Page; activeView?: string; navigate?: (page: Page, view?: string) => void; setPage?: (page: Page) => void; open: boolean; close: () => void; chargerCount: number; permissions:Set<string>;tenants:Tenant[];selectedTenantId?:string;selectTenant:(id:string)=>void;manageWorkspaces?:()=>void }) {
   const [selectedView,setSelectedView]=useState('');
   const [expanded,setExpanded]=useState<Page|null>(page);
+  const [workspaceOpen,setWorkspaceOpen]=useState(false);const selectedTenant=tenants.find(item=>item.id===selectedTenantId)??tenants[0];
   useEffect(()=>setExpanded(page),[page]);
   const go=(target:Page,view?:string)=>{setSelectedView(view??'');if(navigate)navigate(target,view);else{setPage?.(target);window.dispatchEvent(new CustomEvent('tekwatt:navigate',{detail:{target,view}}));}};
   return <aside className={`sidebar ${open ? 'open' : ''}`}>
     <div className="sidebar-head"><Brand /><button className="icon mobile-only" onClick={close}><X /></button></div>
-    <div className="workspace"><span className="avatar mini">TW</span><div><small>WORKSPACE</small><strong>TekWatt India</strong></div><ChevronDown size={16} /></div>
+    <div className="workspace-switcher"><button className="workspace" type="button" aria-expanded={workspaceOpen} onClick={()=>setWorkspaceOpen(!workspaceOpen)}><span className="avatar mini">{selectedTenant?.name.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TW'}</span><span><small>WORKSPACE</small><strong>{selectedTenant?.name??'No workspace'}</strong></span><ChevronDown className={workspaceOpen?'open':''} size={16}/></button>{workspaceOpen&&<div className="workspace-menu">{tenants.map(tenant=><button type="button" key={tenant.id} className={tenant.id===selectedTenant?.id?'active':''} onClick={()=>{selectTenant(tenant.id);setWorkspaceOpen(false);close();}}><span>{tenant.name}</span><small>{tenant.slug}</small></button>)}{manageWorkspaces&&<button type="button" className="workspace-manage" onClick={()=>{manageWorkspaces();setWorkspaceOpen(false);}}><Plus size={14}/> Manage workspaces</button>}</div>}</div>
     <nav>{nav.filter(item=>item.label==='Dashboard'?permissions.has('Dashboard'):(navigationScreens[item.label]?.some(screen=>permissions.has(screen))??permissions.has(item.label))).map(item => {
       const screens=(navigationScreens[item.label]??[]).filter(screen=>permissions.has(screen));
       const hasChildren=screens.length>0;
@@ -162,6 +163,14 @@ function Header({ page, dark, toggleDark, openMenu, logout, navigate, realtime, 
   const search = (value: string) => { const match = nav.filter(canOpen).find(item => (item.display ?? item.label).toLowerCase().includes(value.toLowerCase())); if (match) navigate(match.label); };
   const initials=identity.name.split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TW';
   return <header><button className="icon mobile-only" onClick={openMenu}><Menu /></button><div><small>{identity.role} PORTAL</small><h2>{page}</h2></div><div className="header-actions"><label className="search"><Search size={17} /><input placeholder="Search sections" onKeyDown={event => { if (event.key === 'Enter') search(event.currentTarget.value); }} /></label><span className={`live ${realtime}`} title="Real-time server event connection"><i /> {realtime === 'live' ? 'LIVE' : realtime === 'connecting' ? 'RECONNECTING' : 'OFFLINE'}</span><button className="icon" onClick={toggleDark} aria-label="Toggle theme">{dark ? <Sun /> : <Moon />}</button><button className="icon notification" onClick={() => window.alert('No new platform notifications.')} aria-label="Notifications"><Bell /><i /></button><button className="profile" onClick={() => navigate(permissions.has('Account Settings')?'Settings':'Dashboard')}><span className="avatar">{initials}</span><span><strong>{identity.name}</strong><small>{identity.role[0]+identity.role.slice(1).toLowerCase()}</small></span><ChevronDown size={16} /></button><button className="icon logout" onClick={logout} title="Sign out"><LogOut /></button></div></header>;
+}
+
+function WorkspaceModal({tenants,currentId,close,saved}:{tenants:Tenant[];currentId?:string;close:()=>void;saved:(tenant:Tenant)=>Promise<void>}){
+  const [editingId,setEditingId]=useState(currentId??'');const editing=tenants.find(item=>item.id===editingId);const [form,setForm]=useState({name:editing?.name??'',slug:editing?.slug??'',contactEmail:editing?.contactEmail??''});const [error,setError]=useState('');const [saving,setSaving]=useState(false);
+  useEffect(()=>setForm({name:editing?.name??'',slug:editing?.slug??'',contactEmail:editing?.contactEmail??''}),[editingId,editing?.updatedAt]);
+  const submit=async(event:FormEvent)=>{event.preventDefault();setSaving(true);setError('');try{const body={...form,slug:form.slug.trim().toLowerCase()};const tenant=editingId?await api.updateTenant(editingId,body):await api.createTenant(body);await saved(tenant);setEditingId(tenant.id);}catch(reason){setError(reason instanceof Error?reason.message:'Workspace could not be saved');}finally{setSaving(false);}};
+  const createNew=()=>{setEditingId('');setForm({name:'',slug:'',contactEmail:''});setError('');};
+  return <div className="modal-backdrop" onMouseDown={event=>{if(event.currentTarget===event.target)close();}}><form className="modal" onSubmit={submit}><div className="modal-head"><div><span className="eyebrow">TENANT MANAGEMENT</span><h2>Workspaces</h2><p>Create and switch between isolated operating environments.</p></div><button type="button" className="icon" onClick={close}><X/></button></div><div className="workspace-admin-list">{tenants.map(tenant=><button type="button" key={tenant.id} className={editingId===tenant.id?'active':''} onClick={()=>{setEditingId(tenant.id);setError('');}}><strong>{tenant.name}</strong><small>{tenant.slug} · {tenant.status??'ACTIVE'}</small></button>)}<button type="button" className={!editingId?'active new-workspace':''} onClick={createNew}><Plus size={15}/> New workspace</button></div><div className="form-grid"><label>Workspace name<input required maxLength={150} value={form.name} onChange={event=>setForm({...form,name:event.target.value})} placeholder="TekWatt Chennai"/></label><label>Unique slug<input required maxLength={80} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value={form.slug} onChange={event=>setForm({...form,slug:event.target.value.toLowerCase().replace(/[^a-z0-9-]/g,'-')})} placeholder="tekwatt-chennai"/><small>Lowercase letters, numbers and hyphens only</small></label><label className="full">Contact email<input required type="email" maxLength={254} value={form.contactEmail} onChange={event=>setForm({...form,contactEmail:event.target.value})}/></label></div>{error&&<div className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="secondary" onClick={close}>Close</button><button className="primary" disabled={saving}>{saving?'Saving…':editingId?'Save workspace':'Create workspace'}</button></div></form></div>;
 }
 
 function Metric({ label, value, trend, icon: Icon, tone }: { label: string; value: string; trend: string; icon: typeof Gauge; tone: string }) {
@@ -449,6 +458,7 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
   const [menu, setMenu] = useState(false);
   const [showAddStation, setShowAddStation] = useState(false);
   const [showAddCharger, setShowAddCharger] = useState(false);
+  const [showWorkspaces,setShowWorkspaces]=useState(false);
   const [stationView, setStationView] = useState('Stations');
   const [sessionView, setSessionView] = useState('Charging Sessions');
   const [reportView, setReportView] = useState('Reports');
@@ -461,6 +471,7 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
   const [settingsView, setSettingsView] = useState('General Settings');
   useEffect(()=>{const handle=(event:Event)=>{const {target,view}=(event as CustomEvent<{target:Page;view?:string}>).detail;if(!view)return;if(target==='Stations')setStationView(view);else if(target==='Sessions')setSessionView(view);else if(target==='Payments')setPaymentView(view);else if(target==='Users')setUserView(view);else if(target==='Managers')setManagerView(view);else if(target==='Content')setContentView(view);else if(target==='Reports')setReportView(view);else if(target==='Support')setSupportView(view);else if(target==='Admins')setAdminView(view);else if(target==='Settings')setSettingsView(view);};window.addEventListener('tekwatt:navigate',handle);return()=>window.removeEventListener('tekwatt:navigate',handle);},[]);
   const [platformData, setData] = useState<LiveData>({ chargers: [], connectors: [], sessions: [], payments: [], users: [], reports: [], notifications: [], connections: [], messages: [], firmwarePackages: [], firmwareJobs: [], supportTickets: [], bills:[], invoices:[], paymentGateways:[], wallets:[], scanPayOrders:[], partners:[], technicians:[], rfidCards:[],maintenanceJobs:[],amcContracts:[],roles:[],administrators:[],adminApiKeys:[],governanceSettings:{},tariffs:[],tariffAssignments:[],modules:[] });
+  const [tenants,setTenants]=useState<Tenant[]>([]);const [selectedTenantId,setSelectedTenantId]=useState(()=>localStorage.getItem('tekwatt-workspace-id')??'');
   const customerProfile=platformData.users.find(user=>user.authUserId===identity.userId||user.email.toLowerCase()===identity.email.toLowerCase());
   const data=useMemo<LiveData>(()=>{
     if(identity.role!=='CUSTOMER'||!customerProfile)return platformData;
@@ -476,14 +487,15 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
   const [realtime, setRealtime] = useState<'live' | 'connecting' | 'offline'>(demo ? 'offline' : 'connecting');
   const [pendingMutations, setPendingMutations] = useState(0);
   useEffect(() => subscribeApiMutations(setPendingMutations), []);
-  const refresh = async (silent = false) => {
+  const refresh = async (silent = false, requestedTenantId = selectedTenantId) => {
     if (demo) return;
     if (!silent) setLoading(true);
     setLoadError('');
     try {
       const tenants = await api.tenants();
       if (!tenants.length) throw new Error('No tenant exists yet. Create a tenant in Swagger before loading operational data.');
-      const tenant = tenants[0];
+      setTenants(tenants);const tenant = tenants.find(item=>item.id===requestedTenantId)??tenants.find(item=>item.id===localStorage.getItem('tekwatt-workspace-id'))??tenants[0];
+      if(tenant.id!==selectedTenantId)setSelectedTenantId(tenant.id);localStorage.setItem('tekwatt-workspace-id',tenant.id);
       const results = await Promise.allSettled([
         api.chargers(tenant.id), api.sessions(tenant.id), api.payments(tenant.id), api.users(tenant.id), api.reports(tenant.id), api.notifications(tenant.id), api.ocppConnections(), api.ocppMessages(), api.firmwarePackages(), api.firmwareJobs(tenant.id), api.supportTickets(tenant.id), api.bills(tenant.id), api.invoices(tenant.id), api.paymentGateways(tenant.id), api.wallets(tenant.id), api.scanPayOrders(tenant.id), api.partners(tenant.id), api.technicians(tenant.id), api.rfidCards(tenant.id),api.maintenanceJobs(tenant.id),api.amcContracts(tenant.id),api.roles(tenant.id),api.administrators(tenant.id),api.adminApiKeys(tenant.id),api.governanceSettings(tenant.id),api.tariffs(tenant.id),api.tariffAssignments(tenant.id),api.modules(tenant.id),
       ]);
@@ -497,6 +509,8 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
     } catch (reason) { setLoadError(reason instanceof Error ? reason.message : 'Backend data could not be loaded'); }
     finally { setLoading(false); }
   };
+  const selectWorkspace=async(id:string)=>{if(id===selectedTenantId)return;setSelectedTenantId(id);localStorage.setItem('tekwatt-workspace-id',id);setData(current=>({...current,tenant:tenants.find(item=>item.id===id),chargers:[],connectors:[],sessions:[],payments:[],users:[],reports:[],notifications:[],supportTickets:[],bills:[],invoices:[],wallets:[],scanPayOrders:[],partners:[],technicians:[],rfidCards:[],maintenanceJobs:[],amcContracts:[],roles:[],administrators:[],adminApiKeys:[],governanceSettings:{},tariffs:[],tariffAssignments:[],modules:[]}));await refresh(false,id);};
+  const workspaceSaved=async(tenant:Tenant)=>{setTenants(current=>[...current.filter(item=>item.id!==tenant.id),tenant]);setShowWorkspaces(false);if(tenant.id===selectedTenantId)await refresh(false,tenant.id);else await selectWorkspace(tenant.id);};
   useEffect(() => { void refresh(); }, [demo]);
   useEffect(() => {
     if (demo || !data.tenant) { setRealtime('offline'); return; }
@@ -526,7 +540,8 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
     if (page === 'Admins') return <><Subnav items={allowedScreens('Admins')} active={adminView} select={setAdminView}/>{adminView==='API Keys'?<ApiKeysPage data={data} refresh={refresh}/>:adminView==='Install Modules'?<InstallModulesPage data={data} refresh={refresh}/>:<AdministratorsPage data={data} refresh={refresh}/>}</>;
     return <><Subnav items={allowedScreens('Settings')} active={settingsView} select={setSettingsView}/>{settingsView==='Account Settings'?<SettingsPage data={data} refresh={refresh}/>:<GeneralSettingsPage data={data} refresh={refresh}/>}</>;
   }, [page, data, demo, identity, permissions, stationView, sessionView, reportView, paymentView, userView, managerView, contentView, supportView, adminView, settingsView]);
-  return <div className={`app ${dark ? 'dark' : ''} ${pendingMutations ? 'api-mutating' : ''}`} aria-busy={pendingMutations > 0}>{pendingMutations>0&&<div className="global-action-loader" role="status" aria-live="polite"><span className="button-spinner" aria-hidden="true"/>Saving changes…</div>}<Sidebar page={page} activeView={activeView} navigate={navigateTo} open={menu} close={() => setMenu(false)} chargerCount={demo ? 5 : data.chargers.length} permissions={enabledPermissions}/>{menu && <div className="scrim" onClick={() => setMenu(false)} />}<div className="shell"><Header page={page} dark={dark} toggleDark={() => setDark(!dark)} openMenu={() => setMenu(true)} logout={logout} navigate={target=>navigateTo(target)} realtime={realtime} identity={identity} permissions={enabledPermissions}/><main className="content">{demo && <div className="mode-banner">Demo data mode <button onClick={logout}>Connect backend</button></div>}{loading && <div className="loading-bar">Loading data from API Gateway…</div>}{loadError && <div className="api-error"><span>{loadError}</span><button onClick={() => refresh()}>Retry</button></div>}{!loading && body}</main></div>{showAddStation&&identity.role!=='CUSTOMER'&&<AddStationModal data={data} close={()=>setShowAddStation(false)} saved={()=>refresh()}/>} {showAddCharger&&identity.role!=='CUSTOMER'&&<AddChargerModal data={data} close={()=>setShowAddCharger(false)} saved={()=>refresh()}/>}</div>;
+  const availableWorkspaces=demo?[{id:'demo',name:'TekWatt Demo',slug:'tekwatt-demo',contactEmail:'demo@tekwatt.in',status:'ACTIVE'} as Tenant]:tenants;
+  return <div className={`app ${dark ? 'dark' : ''} ${pendingMutations ? 'api-mutating' : ''}`} aria-busy={pendingMutations > 0}>{pendingMutations>0&&<div className="global-action-loader" role="status" aria-live="polite"><span className="button-spinner" aria-hidden="true"/>Saving changes…</div>}<Sidebar page={page} activeView={activeView} navigate={navigateTo} open={menu} close={() => setMenu(false)} chargerCount={demo ? 5 : data.chargers.length} permissions={enabledPermissions} tenants={availableWorkspaces} selectedTenantId={demo?'demo':selectedTenantId} selectTenant={id=>{if(!demo)void selectWorkspace(id)}} manageWorkspaces={!demo&&identity.role==='ADMIN'?()=>setShowWorkspaces(true):undefined}/>{menu && <div className="scrim" onClick={() => setMenu(false)} />}<div className="shell"><Header page={page} dark={dark} toggleDark={() => setDark(!dark)} openMenu={() => setMenu(true)} logout={logout} navigate={target=>navigateTo(target)} realtime={realtime} identity={identity} permissions={enabledPermissions}/><main className="content">{demo && <div className="mode-banner">Demo data mode <button onClick={logout}>Connect backend</button></div>}{loading && <div className="loading-bar">Loading workspace data from API Gateway…</div>}{loadError && <div className="api-error"><span>{loadError}</span><button onClick={() => refresh()}>Retry</button></div>}{!loading && body}</main></div>{showAddStation&&identity.role!=='CUSTOMER'&&<AddStationModal data={data} close={()=>setShowAddStation(false)} saved={()=>refresh()}/>} {showAddCharger&&identity.role!=='CUSTOMER'&&<AddChargerModal data={data} close={()=>setShowAddCharger(false)} saved={()=>refresh()}/>} {showWorkspaces&&identity.role==='ADMIN'&&<WorkspaceModal tenants={tenants} currentId={selectedTenantId} close={()=>setShowWorkspaces(false)} saved={workspaceSaved}/>}</div>;
 }
 
 export default function App() {
