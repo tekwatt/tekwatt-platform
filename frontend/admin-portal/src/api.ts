@@ -1,6 +1,7 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 export type TokenResponse = { accessToken: string; refreshToken: string; tokenType: string; expiresIn: number };
+export type UserSession={id:string;device:string;ipAddress?:string;createdAt:string;lastUsedAt:string;expiresAt:string;current:boolean};
 export type Tenant = { id: string; name: string; slug:string; contactEmail:string; status?: string; createdAt?:string; updatedAt?:string };
 export type Charger = { id:string;tenantId:string;organizationId?:string;stationId:string;serialNumber:string;vendor:string;model:string;protocolVersion:string;stationName?:string;address?:string;city?:string;state?:string;description?:string;latitude?:number;longitude?:number;stationStatus?:string;openingHours?:string;powerKw?:number;pricePerKwh?:number;contactPhone?:string;contactEmail?:string;firmwareVersion?:string;meterSerialNumber?:string;simNumber?:string;status:string;lastHeartbeat?:string };
 export type CreateChargerRequest = Omit<Charger,'id'|'status'|'lastHeartbeat'>;
@@ -45,6 +46,7 @@ type MutationListener = (pending: number) => void;
 const mutationListeners = new Set<MutationListener>();
 const inFlightMutations = new Map<string, Promise<unknown>>();
 let pendingMutations = 0;
+let refreshOperation:Promise<string|null>|null=null;
 
 const publishMutationActivity = () => mutationListeners.forEach(listener => listener(pendingMutations));
 
@@ -56,14 +58,22 @@ export function subscribeApiMutations(listener: MutationListener) {
 
 async function performRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = sessionStorage.getItem('tekwatt-access-token');
-  const response = await fetch(`${API_BASE}${path}`, {
+  const execute=(accessToken:string|null)=>fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers,
     },
   });
+  let response = await execute(token);
+  if(response.status===401&&!path.startsWith('/api/v1/auth/login')&&!path.startsWith('/api/v1/auth/register')&&!path.startsWith('/api/v1/auth/refresh')){
+    const refreshToken=sessionStorage.getItem('tekwatt-refresh-token');
+    if(refreshToken){
+      refreshOperation??=fetch(`${API_BASE}/api/v1/auth/refresh`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken})}).then(async result=>{if(!result.ok)return null;const tokens=await result.json() as TokenResponse;sessionStorage.setItem('tekwatt-access-token',tokens.accessToken);sessionStorage.setItem('tekwatt-refresh-token',tokens.refreshToken);return tokens.accessToken;}).finally(()=>{refreshOperation=null;});
+      const renewed=await refreshOperation;if(renewed)response=await execute(renewed);
+    }
+  }
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
     try { const body = await response.json(); message = body.message || body.detail || message; } catch { /* non-JSON error */ }
@@ -101,6 +111,10 @@ export const api = {
   realtimeUrl: (tenantId: string) => `${API_BASE}/api/v1/admin/events?tenantId=${encodeURIComponent(tenantId)}`,
   login: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  logout: (refreshToken:string) => request<void>('/api/v1/auth/logout',{method:'POST',body:JSON.stringify({refreshToken})}),
+  userSessions: () => request<UserSession[]>('/api/v1/auth/sessions'),
+  revokeUserSession: (id:string) => request<void>(`/api/v1/auth/sessions/${id}`,{method:'DELETE'}),
+  revokeOtherUserSessions: () => request<void>('/api/v1/auth/sessions/revoke-others',{method:'POST'}),
   tenants: async () => pageContent(await request<{ content: Tenant[] }>('/api/v1/tenants?page=0&size=100')),
   createTenant: (body:{name:string;slug:string;contactEmail:string}) => request<Tenant>('/api/v1/tenants',{method:'POST',body:JSON.stringify(body)}),
   chargers: (tenantId: string) => request<Charger[]>(`/api/v1/chargers?tenantId=${encodeURIComponent(tenantId)}`),
