@@ -4,7 +4,7 @@ export type TokenResponse = { accessToken: string; refreshToken: string; tokenTy
 export type Tenant = { id: string; name: string; code?: string; status?: string };
 export type Charger = { id:string;tenantId:string;organizationId?:string;stationId:string;serialNumber:string;vendor:string;model:string;protocolVersion:string;stationName?:string;address?:string;city?:string;state?:string;description?:string;latitude?:number;longitude?:number;stationStatus?:string;openingHours?:string;powerKw?:number;pricePerKwh?:number;contactPhone?:string;contactEmail?:string;firmwareVersion?:string;meterSerialNumber?:string;simNumber?:string;status:string;lastHeartbeat?:string };
 export type CreateChargerRequest = Omit<Charger,'id'|'status'|'lastHeartbeat'>;
-export type ChargingSession = { id: string; transactionId: string; userId?: string; chargerId: string; status: string; energyKwh?: number; totalCost?: number; currency?: string; startedAt?: string; stoppedAt?: string };
+export type ChargingSession = { id: string; transactionId: string; userId?: string; chargerId: string; tariffId?:string; status: string; energyKwh?: number; pricePerKwh?:number; timePricePerMinute?:number; sessionFee?:number; taxPercent?:number; totalCost?: number; currency?: string; startedAt?: string; stoppedAt?: string };
 export type Payment = { id: string; userId?: string; amount?: number; currency?: string; status?: string; createdAt?: string };
 export type UserProfile = { id: string; authUserId?:string; tenantId?:string; firstName?: string; lastName?: string; fullName?:string; email: string; phone?:string; city?:string; zipcode?:string; status?: string; createdAt?:string; updatedAt?:string };
 export type Report = { id: string; type?: string; fileName?: string; status?: string; createdAt?: string };
@@ -34,6 +34,8 @@ export type RolePolicy={id:string;tenantId:string;roleName:string;permissionList
 export type Administrator={id:string;tenantId:string;authUserId?:string;name:string;email:string;phone?:string;roleName:string;status:string;createdAt:string};
 export type AdminApiKey={id:string;tenantId:string;keyId:string;secret?:string;name:string;roleName:string;scopes:string;status:string;createdAt:string};
 export type Tariff={id:string;tenantId:string;code:string;name:string;energyPricePerKwh:number;timePricePerMinute:number;sessionFee:number;taxPercent:number;currency:string;status:string;validFrom:string;validTo?:string};
+export type TariffAssignment={id:string;tenantId:string;tariffId:string;chargerId:string;assignedAt:string};
+export type PlatformModule={id:string;name:string;description:string;capabilities:string[];dependencies:string[];available:boolean;installed:boolean;operational:boolean;status:'AVAILABLE'|'INSTALLED'|'DEGRADED'|'NOT_IMPLEMENTED';installedAt?:string};
 
 class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -183,4 +185,11 @@ export const api = {
   disableAdminApiKey:(id:string)=>request<AdminApiKey>(`/api/v1/admin/governance/api-keys/${id}/disable`,{method:'POST'}),
   governanceSettings:(tenantId:string)=>request<Record<string,string>>(`/api/v1/admin/governance/settings?tenantId=${encodeURIComponent(tenantId)}`),
   saveGovernanceSettings:(tenantId:string,body:Record<string,string>)=>request<Record<string,string>>(`/api/v1/admin/governance/settings?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
+  tariffAssignments:(tenantId:string)=>request<TariffAssignment[]>(`/api/v1/tariffs/assignments?tenantId=${encodeURIComponent(tenantId)}`),
+  assignTariff:(tariffId:string,tenantId:string,chargerId:string)=>request<TariffAssignment>(`/api/v1/tariffs/${tariffId}/assignments`,{method:'POST',body:JSON.stringify({tenantId,chargerId})}),
+  unassignTariff:(tenantId:string,chargerId:string)=>request<void>(`/api/v1/tariffs/assignments?tenantId=${encodeURIComponent(tenantId)}&chargerId=${encodeURIComponent(chargerId)}`,{method:'DELETE'}),
+  updateTariff:(id:string,body:Record<string,unknown>)=>request<Tariff>(`/api/v1/tariffs/${id}`,{method:'PUT',body:JSON.stringify(body)}),
+  modules:(tenantId:string)=>request<PlatformModule[]>(`/api/v1/admin/modules?tenantId=${encodeURIComponent(tenantId)}`),
+  installModule:(tenantId:string,moduleId:string)=>request<PlatformModule>(`/api/v1/admin/modules/${moduleId}/install?tenantId=${encodeURIComponent(tenantId)}`,{method:'POST'}),
+  uninstallModule:(tenantId:string,moduleId:string)=>request<void>(`/api/v1/admin/modules/${moduleId}?tenantId=${encodeURIComponent(tenantId)}`,{method:'DELETE'}),
 };

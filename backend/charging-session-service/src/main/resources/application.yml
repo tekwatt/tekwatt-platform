@@ -11,6 +11,9 @@ spring:
       ddl-auto: validate
 server:
   port: ${SERVER_PORT:8084}
+tekwatt:
+  services:
+    tariff: ${TARIFF_SERVICE_URL:http://localhost:8088}
 management:
   endpoint:
     health:

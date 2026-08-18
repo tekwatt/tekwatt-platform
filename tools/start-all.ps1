@@ -2,7 +2,8 @@ param(
     [string]$DatabaseUsername = "tekwatt",
     [Parameter(Mandatory = $true)]
     [string]$DatabasePassword,
-    [int]$StartupTimeoutSeconds = 300
+    [int]$StartupTimeoutSeconds = 300,
+    [string]$JavaPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,8 +34,19 @@ $services = @(
     "api-gateway"
 )
 
-if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
-    throw "Java was not found. Add JDK 21 bin to PATH before running this script."
+if ([string]::IsNullOrWhiteSpace($JavaPath)) {
+    if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME "bin\java.exe"))) {
+        $JavaPath = Join-Path $env:JAVA_HOME "bin\java.exe"
+    } else {
+        $JavaPath = Get-ChildItem "$env:ProgramFiles\Java\jdk-*\bin\java.exe" -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+    }
+}
+if ([string]::IsNullOrWhiteSpace($JavaPath) -or -not (Test-Path $JavaPath)) {
+    $JavaPath = (Get-Command java -ErrorAction SilentlyContinue).Source
+}
+if ([string]::IsNullOrWhiteSpace($JavaPath)) {
+    throw "Java was not found. Install JDK 21 or pass -JavaPath."
 }
 
 New-Item -ItemType Directory -Force $logsDirectory | Out-Null
@@ -48,6 +60,7 @@ foreach ($service in $services) {
     $target = Join-Path $platformRoot "backend\$service\target"
     $jar = Get-ChildItem -Path $target -Filter "$service-*.jar" -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -notlike "*.original" } |
+        Sort-Object @{ Expression = { if ($_.Name -like "*-exec.jar") { 0 } else { 1 } } }, Name |
         Select-Object -First 1
 
     if ($null -eq $jar) {
@@ -56,7 +69,7 @@ foreach ($service in $services) {
 
     $stdout = Join-Path $logsDirectory "$service.log"
     $stderr = Join-Path $logsDirectory "$service-error.log"
-    $process = Start-Process -FilePath "java" `
+    $process = Start-Process -FilePath $JavaPath `
         -ArgumentList @("-Xms64m", "-Xmx384m", "-jar", "`"$($jar.FullName)`"") `
         -RedirectStandardOutput $stdout `
         -RedirectStandardError $stderr `

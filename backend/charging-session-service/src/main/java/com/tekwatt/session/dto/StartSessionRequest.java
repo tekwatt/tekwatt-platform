@@ -6,4 +6,4 @@ import java.util.UUID;
 
 public record StartSessionRequest(@NotNull UUID tenantId, @NotNull UUID userId, @NotNull UUID chargerId, @NotNull UUID connectorId,
         @NotBlank String transactionId, @NotNull @PositiveOrZero BigDecimal meterStartWh,
-        @NotNull @PositiveOrZero BigDecimal pricePerKwh, @NotBlank @Size(min = 3, max = 3) String currency) {}
+        @PositiveOrZero BigDecimal pricePerKwh, @Size(min = 3, max = 3) String currency) {}
