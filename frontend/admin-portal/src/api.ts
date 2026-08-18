@@ -4,7 +4,7 @@ export type TokenResponse = { accessToken: string; refreshToken: string; tokenTy
 export type Tenant = { id: string; name: string; code?: string; status?: string };
 export type Charger = { id:string;tenantId:string;organizationId?:string;stationId:string;serialNumber:string;vendor:string;model:string;protocolVersion:string;stationName?:string;address?:string;city?:string;state?:string;description?:string;latitude?:number;longitude?:number;stationStatus?:string;openingHours?:string;powerKw?:number;pricePerKwh?:number;contactPhone?:string;contactEmail?:string;firmwareVersion?:string;meterSerialNumber?:string;simNumber?:string;status:string;lastHeartbeat?:string };
 export type CreateChargerRequest = Omit<Charger,'id'|'status'|'lastHeartbeat'>;
-export type ChargingSession = { id: string; transactionId: string; userId?: string; chargerId: string; tariffId?:string; status: string; energyKwh?: number; pricePerKwh?:number; timePricePerMinute?:number; sessionFee?:number; taxPercent?:number; totalCost?: number; currency?: string; startedAt?: string; stoppedAt?: string };
+export type ChargingSession = { id: string; transactionId: string; userId?: string; chargerId: string; connectorId:string; tariffId?:string; status: string; meterStartWh?:number; meterStopWh?:number; energyKwh?: number; pricePerKwh?:number; timePricePerMinute?:number; sessionFee?:number; taxPercent?:number; totalCost?: number; currency?: string; startedAt?: string; stoppedAt?: string; updatedAt?:string };
 export type Payment = { id: string; userId?: string; amount?: number; currency?: string; status?: string; createdAt?: string };
 export type UserProfile = { id: string; authUserId?:string; tenantId?:string; firstName?: string; lastName?: string; fullName?:string; email: string; phone?:string; city?:string; zipcode?:string; status?: string; createdAt?:string; updatedAt?:string };
 export type Report = { id: string; type?: string; fileName?: string; status?: string; createdAt?: string };
@@ -104,6 +104,9 @@ export const api = {
   tenants: async () => pageContent(await request<{ content: Tenant[] }>('/api/v1/tenants?page=0&size=100')),
   chargers: (tenantId: string) => request<Charger[]>(`/api/v1/chargers?tenantId=${encodeURIComponent(tenantId)}`),
   sessions: (tenantId: string) => request<ChargingSession[]>(`/api/v1/charging-sessions?tenantId=${encodeURIComponent(tenantId)}`),
+  startSession: (body:{tenantId:string;userId:string;chargerId:string;connectorId:string;transactionId:string;meterStartWh:number;currency?:string}) => request<ChargingSession>('/api/v1/charging-sessions',{method:'POST',body:JSON.stringify(body)}),
+  recordSessionMeter: (id:string,meterWh:number) => request<ChargingSession>(`/api/v1/charging-sessions/${id}/meter-values`,{method:'POST',body:JSON.stringify({meterWh,recordedAt:new Date().toISOString()})}),
+  stopSession: (id:string,meterStopWh:number,status='COMPLETED') => request<ChargingSession>(`/api/v1/charging-sessions/${id}/stop`,{method:'POST',body:JSON.stringify({meterStopWh,status})}),
   payments: (tenantId: string) => request<Payment[]>(`/api/v1/payments?tenantId=${encodeURIComponent(tenantId)}`),
   refundPayment: (id: string) => request<Payment>(`/api/v1/payments/${id}/refund`, { method: 'POST' }),
   bills: (tenantId:string)=>request<Bill[]>(`/api/v1/bills?tenantId=${encodeURIComponent(tenantId)}`),
