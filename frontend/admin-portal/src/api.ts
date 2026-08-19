@@ -97,7 +97,10 @@ async function performRequest<T>(path: string, options: RequestInit = {}): Promi
   }
   if (!response.ok) {
     if(response.status===401&&!path.startsWith('/api/v1/auth/')){sessionStorage.setItem('tekwatt-auth-notice','Your session expired. Please sign in again.');window.dispatchEvent(new Event('tekwatt:session-expired'));}
-    throw new ApiError(await friendlyError(response), response.status);
+    const message=response.status===401&&path.startsWith('/api/v1/auth/login')
+      ? 'The email address or password is incorrect. Please check your details and try again.'
+      : await friendlyError(response);
+    throw new ApiError(message, response.status);
   }
   return response.status === 204 ? undefined as T : response.json() as Promise<T>;
 }

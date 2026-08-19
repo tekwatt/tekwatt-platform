@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Activity, Bell, Bolt, Building2, ChevronDown, IndianRupee,
+  Activity, Bell, Bolt, Building2, ChevronDown, CircleAlert, IndianRupee,
   CreditCard, FileBarChart, Gauge, Headphones, LayoutDashboard, LogOut,
   BriefcaseBusiness, Menu, Moon, Newspaper, PackagePlus, PlugZap, Plus, Search, Settings, ShieldCheck, Sun,
   Users, WalletCards, X, Zap,
@@ -98,6 +98,13 @@ function Brand({ compact = false }: { compact?: boolean }) {
   return <div className={`brand ${compact ? 'compact' : ''}`}><img className="brand-logo" src="/logo-sidebar.webp" alt="TekWatt Nexus — Smart EV Charging Solutions" /></div>;
 }
 
+function ErrorAlert({ title, message }: { title: string; message: string }) {
+  return <div className="error-alert" role="alert" aria-live="assertive">
+    <span className="error-alert-icon" aria-hidden="true"><CircleAlert /></span>
+    <div className="error-alert-copy"><strong>{title}</strong><p>{message}</p></div>
+  </div>;
+}
+
 function Login({ onLogin, onDemo }: { onLogin: (email: string, password: string, register: boolean) => Promise<void>; onDemo: () => void }) {
   const [email, setEmail] = useState('admin@tekwatt.in');
   const [password, setPassword] = useState('');
@@ -127,7 +134,7 @@ function Login({ onLogin, onDemo }: { onLogin: (email: string, password: string,
         <p>Enter your customer, partner, technician, or administrator credentials.</p>
         <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
         <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Your backend account password" /></label>
-        {error && <div className="form-error">{error}</div>}
+        {error && <ErrorAlert title="Sign-in unsuccessful" message={error} />}
         <button className="primary wide" type="submit" disabled={loading}>{loading ? 'Connecting…' : 'Sign in'} <Bolt size={18} /></button>
         <button className="secondary wide" type="button" disabled={loading || password.length < 12} onClick={event => submit(event, true)}>Create first account</button>
         <button className="demo-link" type="button" onClick={onDemo}>Explore with demo data</button>
