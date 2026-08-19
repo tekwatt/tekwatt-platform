@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "TekWatt Nexus",
+    "slug": "tekwatt-nexus",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "in.tekwatt.nexus",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#06131C"
+      },
+      "permissions": ["INTERNET"]
+    },
+    "plugins": ["expo-secure-store"],
+    "splash": {
+      "backgroundColor": "#06131C",
+      "resizeMode": "contain"
+    },
+    "extra": {
+      "supportsOcpp": "2.0.1"
+    }
+  }
+}

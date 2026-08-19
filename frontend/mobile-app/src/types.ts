@@ -1,0 +1,11 @@
+export type TokenResponse = { accessToken: string; refreshToken: string; tokenType: string; expiresIn: number };
+export type TokenClaims = { sub: string; email?: string; roles?: string[]; exp?: number };
+export type Tenant = { id: string; name: string; slug: string; contactEmail: string; status?: string };
+export type UserProfile = { id: string; authUserId?: string; tenantId?: string; firstName?: string; lastName?: string; fullName?: string; email: string; phone?: string; city?: string; zipcode?: string; status?: string };
+export type Charger = { id: string; tenantId: string; stationId: string; stationName?: string; address?: string; city?: string; state?: string; latitude?: number; longitude?: number; openingHours?: string; powerKw?: number; pricePerKwh?: number; vendor?: string; model?: string; protocolVersion?: string; status: string; lastHeartbeat?: string };
+export type Connector = { id: string; tenantId: string; chargerId: string; connectorNumber: number; type: string; maxPowerKw: number; maxVoltage: number; maxCurrent: number; status: string };
+export type ChargingSession = { id: string; transactionId: string; userId?: string; chargerId: string; connectorId: string; status: string; meterStartWh?: number; meterStopWh?: number; energyKwh?: number; totalCost?: number; currency?: string; startedAt?: string; stoppedAt?: string };
+export type Wallet = { id: string; tenantId: string; userId: string; balance: number; currency: string; status: string; updatedAt: string };
+export type Payment = { id: string; tenantId?: string; userId?: string; amount?: number; currency?: string; status?: string; createdAt?: string };
+export type SupportTicket = { id: string; ticketNumber: string; tenantId: string; requesterId?: string; requesterName: string; requesterEmail: string; subject: string; description: string; category: string; priority: string; status: string; stationId?: string; sessionId?: string; createdAt: string; updatedAt: string };
+export type RegistrationInput = { email: string; password: string; firstName: string; lastName: string; phone?: string };

@@ -13,6 +13,8 @@ tmp/
 
 # Node.js
 node_modules/
+.npm-cache/
+.expo/
 dist/
 build/
 coverage/
