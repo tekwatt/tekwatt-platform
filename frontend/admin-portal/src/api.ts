@@ -1,4 +1,5 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+const configuredTimeoutSeconds=Number(import.meta.env.VITE_API_TIMEOUT_SECONDS??30);const API_TIMEOUT_MS=(Number.isFinite(configuredTimeoutSeconds)&&configuredTimeoutSeconds>0?configuredTimeoutSeconds:30)*1000;
 
 export type TokenResponse = { accessToken: string; refreshToken: string; tokenType: string; expiresIn: number };
 export type UserSession={id:string;device:string;ipAddress?:string;createdAt:string;lastUsedAt:string;expiresAt:string;current:boolean};
@@ -50,6 +51,25 @@ let refreshOperation:Promise<string|null>|null=null;
 
 const publishMutationActivity = () => mutationListeners.forEach(listener => listener(pendingMutations));
 
+const statusMessages:Record<number,string>={
+  400:'Some information is invalid. Please review the highlighted fields and try again.',
+  401:'Your session has expired. Please sign in again.',
+  403:'You do not have permission to perform this action. Contact your administrator if you need access.',
+  404:'The requested information could not be found. It may have been removed or changed.',
+  408:'The request took too long to complete. Please check your connection and try again.',
+  409:'This action conflicts with an existing record or its current status. Refresh the page and try again.',
+  422:'Some information could not be accepted. Please review the form and correct any invalid values.',
+  429:'Too many requests were sent. Please wait a moment and try again.',
+  500:'Something went wrong while processing your request. Please try again. If it continues, contact support.',
+  502:'A required service is not responding correctly. Please try again shortly.',
+  503:'This service is temporarily unavailable. Please try again shortly.',
+  504:'A required service took too long to respond. Please try again shortly.',
+};
+type ErrorPayload={message?:unknown;detail?:unknown;title?:unknown;error?:unknown;errors?:unknown};
+function validationMessage(errors:unknown){if(Array.isArray(errors)){const values=errors.map(item=>typeof item==='string'?item:typeof item==='object'&&item?String((item as Record<string,unknown>).defaultMessage??(item as Record<string,unknown>).message??''):'').filter(Boolean);return values.length?values.join(' '):'';}if(errors&&typeof errors==='object'){const values=Object.entries(errors as Record<string,unknown>).map(([field,value])=>`${field}: ${Array.isArray(value)?value.join(', '):String(value)}`);return values.join(' ');}return '';}
+function usefulServerMessage(value:unknown){if(typeof value!=='string')return '';const text=value.trim().replace(/^\d{3}\s*[-:]?\s*/,'');if(!text||/^(bad request|unauthorized|forbidden|not found|request timeout|conflict|internal server error|bad gateway|service unavailable|gateway timeout|request failed(?:\s*\(\d+\))?)$/i.test(text))return '';return text;}
+async function friendlyError(response:Response){let payload:ErrorPayload={};try{payload=await response.clone().json() as ErrorPayload;}catch{try{payload={message:await response.text()};}catch{/* Response has no readable error body. */}}const validation=validationMessage(payload.errors);const server=usefulServerMessage(payload.detail)||usefulServerMessage(payload.message)||usefulServerMessage(payload.error)||usefulServerMessage(payload.title);return validation||server||statusMessages[response.status]||'The request could not be completed. Please try again.';}
+
 export function subscribeApiMutations(listener: MutationListener) {
   mutationListeners.add(listener);
   listener(pendingMutations);
@@ -58,26 +78,26 @@ export function subscribeApiMutations(listener: MutationListener) {
 
 async function performRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = sessionStorage.getItem('tekwatt-access-token');
-  const execute=(accessToken:string|null)=>fetch(`${API_BASE}${path}`, {
+  const execute=async(accessToken:string|null)=>{try{return await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers,
     },
-  });
+    signal:options.signal??AbortSignal.timeout(API_TIMEOUT_MS),
+  });}catch(reason){if(reason instanceof DOMException&&['AbortError','TimeoutError'].includes(reason.name))throw new ApiError('The request took too long to complete. Please check your connection and try again.',408);throw new ApiError('Unable to connect to TekWatt services. Check your internet or server connection and try again.',0);}};
   let response = await execute(token);
   if(response.status===401&&!path.startsWith('/api/v1/auth/login')&&!path.startsWith('/api/v1/auth/register')&&!path.startsWith('/api/v1/auth/refresh')){
     const refreshToken=sessionStorage.getItem('tekwatt-refresh-token');
     if(refreshToken){
-      refreshOperation??=fetch(`${API_BASE}/api/v1/auth/refresh`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken})}).then(async result=>{if(!result.ok)return null;const tokens=await result.json() as TokenResponse;sessionStorage.setItem('tekwatt-access-token',tokens.accessToken);sessionStorage.setItem('tekwatt-refresh-token',tokens.refreshToken);return tokens.accessToken;}).finally(()=>{refreshOperation=null;});
+      refreshOperation??=fetch(`${API_BASE}/api/v1/auth/refresh`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken})}).then(async result=>{if(!result.ok)return null;const tokens=await result.json() as TokenResponse;sessionStorage.setItem('tekwatt-access-token',tokens.accessToken);sessionStorage.setItem('tekwatt-refresh-token',tokens.refreshToken);return tokens.accessToken;}).catch(()=>null).finally(()=>{refreshOperation=null;});
       const renewed=await refreshOperation;if(renewed)response=await execute(renewed);
     }
   }
   if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-    try { const body = await response.json(); message = body.message || body.detail || message; } catch { /* non-JSON error */ }
-    throw new ApiError(message, response.status);
+    if(response.status===401&&!path.startsWith('/api/v1/auth/')){sessionStorage.setItem('tekwatt-auth-notice','Your session expired. Please sign in again.');window.dispatchEvent(new Event('tekwatt:session-expired'));}
+    throw new ApiError(await friendlyError(response), response.status);
   }
   return response.status === 204 ? undefined as T : response.json() as Promise<T>;
 }

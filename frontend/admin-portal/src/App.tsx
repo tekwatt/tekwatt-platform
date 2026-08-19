@@ -102,7 +102,7 @@ function Login({ onLogin, onDemo }: { onLogin: (email: string, password: string,
   const [email, setEmail] = useState('admin@tekwatt.in');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(()=>{const notice=sessionStorage.getItem('tekwatt-auth-notice')??'';sessionStorage.removeItem('tekwatt-auth-notice');return notice;});
   const submit = async (event: FormEvent, register = false) => {
     event.preventDefault(); setLoading(true); setError('');
     try { await onLogin(email, password, register); }
@@ -459,6 +459,7 @@ function AddChargerModal({data,close,saved}:{data:LiveData;close:()=>void;saved:
 }
 
 function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean; identity:LoginIdentity }) {
+  useEffect(()=>{const expired=()=>logout();window.addEventListener('tekwatt:session-expired',expired);return()=>window.removeEventListener('tekwatt:session-expired',expired);},[logout]);
   const [page, setPage] = useState<Page>('Dashboard');
   const [dark, setDark] = useState(false);
   const [menu, setMenu] = useState(false);
