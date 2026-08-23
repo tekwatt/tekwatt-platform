@@ -38,3 +38,4 @@ logs/
 .terraform/
 *.tfstate
 *.tfstate.*
+.azure-cli/

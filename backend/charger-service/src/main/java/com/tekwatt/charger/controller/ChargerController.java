@@ -14,6 +14,7 @@ public class ChargerController {
     private final ChargerService service;
     public ChargerController(ChargerService service) { this.service = service; }
     @PostMapping @ResponseStatus(HttpStatus.CREATED) public ChargerResponse create(@Valid @RequestBody ChargerRequest request) { return service.create(request); }
+    @GetMapping("/by-station/{stationId}") public ChargerResponse getByStationId(@PathVariable String stationId) { return service.getByStationId(stationId); }
     @GetMapping("/{id}") public ChargerResponse get(@PathVariable UUID id) { return service.get(id); }
     @GetMapping public List<ChargerResponse> list(@RequestParam UUID tenantId) { return service.list(tenantId); }
     @PutMapping("/{id}") public ChargerResponse update(@PathVariable UUID id, @Valid @RequestBody ChargerRequest request) { return service.update(id, request); }

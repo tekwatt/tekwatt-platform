@@ -22,6 +22,7 @@ public class ChargingSessionService {
         return map(sessions.save(new ChargingSession(r.tenantId(), r.userId(), r.chargerId(), r.connectorId(), tariff.id(), r.transactionId(), r.meterStartWh(), tariff.energyPricePerKwh(), tariff.timePricePerMinute(), tariff.sessionFee(), tariff.taxPercent(), tariff.currency())));
     }
     @Transactional(readOnly = true) public SessionResponse get(UUID id) { return map(find(id)); }
+    @Transactional(readOnly = true) public SessionResponse getByTransactionId(String transactionId) { return map(sessions.findByTransactionId(transactionId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Charging session not found"))); }
     @Transactional(readOnly = true) public List<SessionResponse> list(UUID tenantId) { return sessions.findAllByTenantIdOrderByStartedAtDesc(tenantId).stream().map(this::map).toList(); }
     public SessionResponse meterValue(UUID id, MeterValueRequest r) {
         ChargingSession s = active(id); try { s.applyMeterValue(r.meterWh()); } catch (IllegalArgumentException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()); }

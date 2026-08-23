@@ -26,6 +26,7 @@ public class ChargerService {
                 request.firmwareVersion(), request.meterSerialNumber(), request.simNumber())));
     }
     @Transactional(readOnly = true) public ChargerResponse get(UUID id) { return map(find(id)); }
+    @Transactional(readOnly = true) public ChargerResponse getByStationId(String stationId) { return map(repository.findByStationId(stationId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Charger station not found"))); }
     @Transactional(readOnly = true) public List<ChargerResponse> list(UUID tenantId) { return repository.findAllByTenantIdOrderByCreatedAtDesc(tenantId).stream().map(this::map).toList(); }
     public ChargerResponse update(UUID id, ChargerRequest request) {
         Charger charger = find(id);

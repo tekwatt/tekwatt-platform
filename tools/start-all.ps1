@@ -2,7 +2,11 @@ param(
     [string]$DatabaseUsername = "tekwatt",
     [Parameter(Mandatory = $true)]
     [string]$DatabasePassword,
-    [int]$StartupTimeoutSeconds = 300,
+    [int]$StartupTimeoutSeconds = 900,
+    [ValidateRange(1, 22)]
+    [int]$StartupBatchSize = 4,
+    [ValidateRange(0, 60)]
+    [int]$BatchDelaySeconds = 8,
     [string]$JavaPath
 )
 
@@ -50,13 +54,25 @@ if ([string]::IsNullOrWhiteSpace($JavaPath)) {
 }
 
 New-Item -ItemType Directory -Force $logsDirectory | Out-Null
+
+$jpsPath = Join-Path (Split-Path (Split-Path $JavaPath -Parent) -Parent) "bin\jps.exe"
+if (-not (Test-Path $jpsPath)) { $jpsPath = (Get-Command jps -ErrorAction SilentlyContinue).Source }
+if ($jpsPath) {
+    $backendMarker = [regex]::Escape((Join-Path $platformRoot "backend") + "\")
+    $existing = & $jpsPath -lv 2>$null | Where-Object { $_ -match "^\d+\s+$backendMarker" }
+    if ($existing) {
+        throw "TekWatt services are already running or starting. Run tools\stop-all.ps1 before starting them again."
+    }
+}
+
 $env:DATABASE_USERNAME = $DatabaseUsername
 $env:DATABASE_PASSWORD = $DatabasePassword
 $env:SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE = "3"
 $env:SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE = "1"
 $started = @()
 
-foreach ($service in $services) {
+for ($serviceIndex = 0; $serviceIndex -lt $services.Count; $serviceIndex++) {
+    $service = $services[$serviceIndex]
     $target = Join-Path $platformRoot "backend\$service\target"
     $jar = Get-ChildItem -Path $target -Filter "$service-*.jar" -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -notlike "*.original" } |
@@ -78,6 +94,11 @@ foreach ($service in $services) {
 
     $started += [PSCustomObject]@{ service = $service; processId = $process.Id }
     Write-Host "Started $service (PID $($process.Id))" -ForegroundColor Green
+
+    if (($serviceIndex + 1) % $StartupBatchSize -eq 0 -and $serviceIndex -lt $services.Count - 1 -and $BatchDelaySeconds -gt 0) {
+        Write-Host "Allowing this startup batch to initialize for $BatchDelaySeconds seconds..." -ForegroundColor DarkCyan
+        Start-Sleep -Seconds $BatchDelaySeconds
+    }
 }
 
 $pidFile = Join-Path $logsDirectory "service-pids.json"
