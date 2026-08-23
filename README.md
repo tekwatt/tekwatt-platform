@@ -35,3 +35,5 @@ Stop the processes started by the launcher:
 ```powershell
 .\tools\stop-all.ps1
 ```
+
+See [`docs/LOCAL-INTEGRATIONS.md`](docs/LOCAL-INTEGRATIONS.md) to configure the interactive map, Razorpay test payments, and MSG91 SMS locally.

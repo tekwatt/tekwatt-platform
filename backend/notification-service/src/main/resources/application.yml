@@ -9,3 +9,9 @@ spring:
     hibernate.ddl-auto: validate
 server.port: ${SERVER_PORT:8093}
 management.endpoints.web.exposure.include: health,info
+tekwatt:
+  sms:
+    msg91:
+      auth-key: ${MSG91_AUTH_KEY:}
+      template-id: ${MSG91_TEMPLATE_ID:}
+      message-variable: ${MSG91_MESSAGE_VARIABLE:message}

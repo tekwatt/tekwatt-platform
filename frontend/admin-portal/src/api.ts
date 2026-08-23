@@ -7,10 +7,12 @@ export type Tenant = { id: string; name: string; slug:string; contactEmail:strin
 export type Charger = { id:string;tenantId:string;organizationId?:string;stationId:string;serialNumber:string;vendor:string;model:string;protocolVersion:string;stationName?:string;address?:string;city?:string;state?:string;description?:string;latitude?:number;longitude?:number;stationStatus?:string;openingHours?:string;powerKw?:number;pricePerKwh?:number;contactPhone?:string;contactEmail?:string;firmwareVersion?:string;meterSerialNumber?:string;simNumber?:string;status:string;lastHeartbeat?:string };
 export type CreateChargerRequest = Omit<Charger,'id'|'status'|'lastHeartbeat'>;
 export type ChargingSession = { id: string; transactionId: string; userId?: string; chargerId: string; connectorId:string; tariffId?:string; status: string; meterStartWh?:number; meterStopWh?:number; energyKwh?: number; pricePerKwh?:number; timePricePerMinute?:number; sessionFee?:number; taxPercent?:number; totalCost?: number; currency?: string; startedAt?: string; stoppedAt?: string; updatedAt?:string };
-export type Payment = { id: string; userId?: string; amount?: number; currency?: string; status?: string; createdAt?: string };
+export type Payment = { id: string; tenantId?:string; userId?: string; billId?:string; invoiceId?:string; provider?:string; providerOrderId?:string; providerReference?:string; amount?: number; currency?: string; status?: string; createdAt?: string };
+export type RazorpayOrder = { paymentId:string;orderId:string;keyId:string;amount:number;currency:string;description?:string };
+export type RazorpayVerification = { paymentId:string;razorpayPaymentId:string;razorpayOrderId:string;razorpaySignature:string };
 export type UserProfile = { id: string; authUserId?:string; tenantId?:string; firstName?: string; lastName?: string; fullName?:string; email: string; phone?:string; city?:string; zipcode?:string; status?: string; createdAt?:string; updatedAt?:string };
 export type Report = { id: string; type?: string; fileName?: string; status?: string; createdAt?: string };
-export type Notification = { id: string; channel: string; recipient: string; subject?: string; body: string; status: string; createdAt?: string };
+export type Notification = { id: string; channel: string; recipient: string; subject?: string; body: string; status: string; providerMessageId?:string;lastError?:string;attemptCount?:number;maxAttempts?:number;createdAt?: string };
 export type Connector = { id: string; tenantId: string; chargerId: string; connectorNumber: number; type: string; maxPowerKw: number; maxVoltage: number; maxCurrent: number; status: string };
 export type OcppConnection = { stationId: string; connected: boolean; connectedAt?: string; protocol?: string };
 export type OcppMessage = { id: string; stationId: string; direction: string; messageType: number; uniqueId: string; action?: string; payload: string; createdAt: string };
@@ -146,6 +148,8 @@ export const api = {
   recordSessionMeter: (id:string,meterWh:number) => request<ChargingSession>(`/api/v1/charging-sessions/${id}/meter-values`,{method:'POST',body:JSON.stringify({meterWh,recordedAt:new Date().toISOString()})}),
   stopSession: (id:string,meterStopWh:number,status='COMPLETED') => request<ChargingSession>(`/api/v1/charging-sessions/${id}/stop`,{method:'POST',body:JSON.stringify({meterStopWh,status})}),
   payments: (tenantId: string) => request<Payment[]>(`/api/v1/payments?tenantId=${encodeURIComponent(tenantId)}`),
+  createRazorpayOrder: (body:{tenantId:string;userId:string;billId:string;invoiceId?:string;idempotencyKey:string;amount:number;currency:string;description?:string}) => request<RazorpayOrder>('/api/v1/payments/razorpay/orders',{method:'POST',body:JSON.stringify(body)}),
+  verifyRazorpayPayment: (body:RazorpayVerification) => request<Payment>('/api/v1/payments/razorpay/verify',{method:'POST',body:JSON.stringify(body)}),
   refundPayment: (id: string) => request<Payment>(`/api/v1/payments/${id}/refund`, { method: 'POST' }),
   bills: (tenantId:string)=>request<Bill[]>(`/api/v1/bills?tenantId=${encodeURIComponent(tenantId)}`),
   invoices: (tenantId:string)=>request<Invoice[]>(`/api/v1/invoices?tenantId=${encodeURIComponent(tenantId)}`),
@@ -186,8 +190,10 @@ export const api = {
   notifications: (tenantId: string) => request<Notification[]>(`/api/v1/notifications?tenantId=${encodeURIComponent(tenantId)}`),
   createNotification: (body: { tenantId: string; idempotencyKey: string; channel: string; recipient: string; subject?: string; body: string; maxAttempts: number }) => request<Notification>('/api/v1/notifications', { method: 'POST', body: JSON.stringify(body) }),
   sendNotification: (id: string) => request<Notification>(`/api/v1/notifications/${id}/send`, { method: 'POST' }),
+  retryNotification: (id: string) => request<Notification>(`/api/v1/notifications/${id}/retry`, { method: 'POST' }),
   updateTenant: (id: string, body: { name: string; slug: string; contactEmail: string }) => request<Tenant>(`/api/v1/tenants/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   createCharger: (body: CreateChargerRequest) => request<Charger>('/api/v1/chargers', { method: 'POST', body: JSON.stringify(body) }),
+  updateCharger: (id:string,body:CreateChargerRequest) => request<Charger>(`/api/v1/chargers/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   setChargerStatus: (id: string, status: string) => request<Charger>(`/api/v1/chargers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   heartbeatCharger: (id: string) => request<Charger>(`/api/v1/chargers/${id}/heartbeat`, { method: 'POST' }),
   connectors: (chargerId: string) => request<Connector[]>(`/api/v1/connectors?chargerId=${encodeURIComponent(chargerId)}`),
