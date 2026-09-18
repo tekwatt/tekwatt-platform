@@ -1,4 +1,4 @@
-import type { Charger, ChargingSession, Connector, Payment, RegistrationInput, SupportTicket, Tenant, TokenResponse, UserProfile, Wallet } from '../types';
+import type { Charger, ChargingSession, Connector, Invoice, Payment, RegistrationInput, Reservation, RfidCard, SupportTicket, Tenant, TicketComment, TicketDetail, TokenResponse, UserProfile, UserSession, Wallet, WalletEntry } from '../types';
 
 export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://10.0.2.2:8080').replace(/\/$/, '');
 
@@ -59,18 +59,32 @@ const pageContent = <T>(value: { content?: T[] } | T[]) => Array.isArray(value) 
 export const api = {
   login: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   registerAuth: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  refreshAuth: (refreshToken: string) => request<TokenResponse>('/api/v1/auth/refresh', { method: 'POST', body: JSON.stringify({ refreshToken }) }),
   logout: (refreshToken: string) => request<void>('/api/v1/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken }) }),
+  authSessions: (token:string)=>request<UserSession[]>('/api/v1/auth/sessions',{token}),
+  revokeSession: (id:string,token:string)=>request<void>(`/api/v1/auth/sessions/${id}`,{method:'DELETE',token}),
+  revokeOtherSessions: (token:string)=>request<void>('/api/v1/auth/sessions/revoke-others',{method:'POST',token}),
   tenants: async (token: string) => pageContent(await request<{ content: Tenant[] }>('/api/v1/tenants?page=0&size=100', { token })),
   userByAuth: (authUserId: string, token: string) => request<UserProfile>(`/api/v1/users/by-auth-user/${authUserId}`, { token }),
   createUser: (authUserId: string, tenantId: string, input: RegistrationInput, token: string) => request<UserProfile>('/api/v1/users', { method: 'POST', token, body: JSON.stringify({ authUserId, tenantId, firstName: input.firstName, lastName: input.lastName, fullName: `${input.firstName} ${input.lastName}`.trim(), email: input.email, phone: input.phone || undefined, status: 'ACTIVE' }) }),
+  updateUser: (id:string,body:Record<string,unknown>,token:string)=>request<UserProfile>(`/api/v1/users/${id}`,{method:'PUT',token,body:JSON.stringify(body)}),
+  rfidCards: (tenantId:string,token:string)=>request<RfidCard[]>(`/api/v1/users/directory/rfid-cards?tenantId=${encodeURIComponent(tenantId)}`,{token}),
   chargers: (tenantId: string, token: string) => request<Charger[]>(`/api/v1/chargers?tenantId=${encodeURIComponent(tenantId)}`, { token }),
   connectors: (chargerId: string, token: string) => request<Connector[]>(`/api/v1/connectors?chargerId=${encodeURIComponent(chargerId)}`, { token }),
   sessions: (tenantId: string, token: string) => request<ChargingSession[]>(`/api/v1/charging-sessions?tenantId=${encodeURIComponent(tenantId)}`, { token }),
   startSession: (body: Record<string, unknown>, token: string) => request<ChargingSession>('/api/v1/charging-sessions', { method: 'POST', token, body: JSON.stringify(body) }),
   stopSession: (id: string, meterStopWh: number, token: string) => request<ChargingSession>(`/api/v1/charging-sessions/${id}/stop`, { method: 'POST', token, body: JSON.stringify({ meterStopWh, status: 'COMPLETED' }) }),
+  reservations: (tenantId:string,token:string)=>request<Reservation[]>(`/api/v1/reservations?tenantId=${encodeURIComponent(tenantId)}`,{token}),
+  createReservation: (body:Record<string,unknown>,token:string)=>request<Reservation>('/api/v1/reservations',{method:'POST',token,body:JSON.stringify(body)}),
+  cancelReservation: (id:string,token:string)=>request<Reservation>(`/api/v1/reservations/${id}/cancel`,{method:'POST',token}),
+  completeReservation: (id:string,token:string)=>request<Reservation>(`/api/v1/reservations/${id}/complete`,{method:'POST',token}),
   wallets: (tenantId: string, token: string) => request<Wallet[]>(`/api/v1/payments/operations/wallets?tenantId=${encodeURIComponent(tenantId)}`, { token }),
   createWallet: (tenantId: string, userId: string, token: string) => request<Wallet>('/api/v1/payments/operations/wallets', { method: 'POST', token, body: JSON.stringify({ tenantId, userId, currency: 'INR' }) }),
+  walletEntries: (walletId:string,token:string)=>request<WalletEntry[]>(`/api/v1/payments/operations/wallets/${walletId}/entries`,{token}),
   payments: (tenantId: string, token: string) => request<Payment[]>(`/api/v1/payments?tenantId=${encodeURIComponent(tenantId)}`, { token }),
+  invoices: (tenantId:string,token:string)=>request<Invoice[]>(`/api/v1/invoices?tenantId=${encodeURIComponent(tenantId)}`,{token}),
   tickets: (tenantId: string, token: string) => request<SupportTicket[]>(`/api/v1/support/tickets?tenantId=${encodeURIComponent(tenantId)}`, { token }),
+  ticket: (id:string,token:string)=>request<TicketDetail>(`/api/v1/support/tickets/${id}`,{token}),
   createTicket: (body: Record<string, unknown>, token: string) => request<SupportTicket>('/api/v1/support/tickets', { method: 'POST', token, body: JSON.stringify(body) }),
+  addTicketComment: (id:string,body:Record<string,unknown>,token:string)=>request<TicketComment>(`/api/v1/support/tickets/${id}/comments`,{method:'POST',token,body:JSON.stringify(body)}),
 };

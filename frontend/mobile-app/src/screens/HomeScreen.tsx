@@ -14,16 +14,16 @@ export function HomeScreen() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent=false) => {
     if (!token || !tenant) return;
-    setLoading(true); setError('');
+    if(!silent)setLoading(true); setError('');
     try {
       const [stationData, sessionData, wallets] = await Promise.all([api.chargers(tenant.id, token), api.sessions(tenant.id, token), api.wallets(tenant.id, token)]);
       setChargers(stationData); setSessions(sessionData.filter(item => !profile || item.userId === profile.id)); setWallet(wallets.find(item => item.userId === profile?.id) || null);
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load your dashboard.'); }
-    finally { setLoading(false); }
+    finally { if(!silent)setLoading(false); }
   }, [profile, tenant, token]);
-  useFocusEffect(useCallback(() => { void load(); }, [load]));
+  useFocusEffect(useCallback(() => { void load();const timer=setInterval(()=>void load(true),15_000);return()=>clearInterval(timer); }, [load]));
   const active = sessions.filter(item => ['ACTIVE', 'STARTED', 'CHARGING'].includes(item.status));
   const completed = sessions.filter(item => item.status === 'COMPLETED');
   const energy = completed.reduce((sum, item) => sum + Number(item.energyKwh || 0), 0);

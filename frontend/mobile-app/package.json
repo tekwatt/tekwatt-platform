@@ -1,6 +1,6 @@
 {
   "name": "@tekwatt/mobile-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "main": "expo/AppEntry.js",
   "scripts": {
@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "android:device": "expo start --android --lan",
     "typecheck": "tsc --noEmit",
-    "doctor": "expo-doctor"
+    "doctor": "npx --cache .npm-cache --yes expo-doctor",
+    "export:android": "expo export --platform android --no-bytecode --max-workers 1"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.18.16",

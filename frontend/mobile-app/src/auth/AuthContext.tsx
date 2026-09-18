@@ -19,11 +19,13 @@ type AuthState = {
   token: string | null;
   refreshToken: string | null;
   claims: TokenClaims | null;
+  tenants: Tenant[];
   tenant: Tenant | null;
   profile: UserProfile | null;
   signIn: (email: string, password: string) => Promise<void>;
   register: (input: RegistrationInput) => Promise<void>;
   signOut: () => Promise<void>;
+  selectTenant: (tenantId:string) => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
 
@@ -38,12 +40,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [token, setToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [claims, setClaims] = useState<TokenClaims | null>(null);
+  const [tenants,setTenants]=useState<Tenant[]>([]);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const clear = useCallback(async () => {
     await Promise.all([SecureStore.deleteItemAsync(ACCESS_KEY), SecureStore.deleteItemAsync(REFRESH_KEY)]);
-    setToken(null); setRefreshToken(null); setClaims(null); setTenant(null); setProfile(null);
+    setToken(null); setRefreshToken(null); setClaims(null); setTenants([]); setTenant(null); setProfile(null);
   }, []);
 
   const hydrate = useCallback(async (access: string, refresh: string) => {
@@ -57,14 +60,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!(error instanceof ApiError) || error.status !== 404) throw error;
     }
     await SecureStore.setItemAsync(TENANT_KEY, selectedTenant.id);
-    setToken(access); setRefreshToken(refresh); setClaims(decoded); setTenant(selectedTenant); setProfile(selectedProfile);
+    setToken(access); setRefreshToken(refresh); setClaims(decoded); setTenants(tenants); setTenant(selectedTenant); setProfile(selectedProfile);
   }, []);
 
   useEffect(() => {
     void (async () => {
       try {
         const [access, refresh] = await Promise.all([SecureStore.getItemAsync(ACCESS_KEY), SecureStore.getItemAsync(REFRESH_KEY)]);
-        if (access && refresh) await hydrate(access, refresh);
+        if (access && refresh) {
+          const decoded=decodeClaims(access);
+          if(decoded.exp&&decoded.exp*1000<=Date.now()+60_000){const renewed=await api.refreshAuth(refresh);await saveTokens(renewed.accessToken,renewed.refreshToken);await hydrate(renewed.accessToken,renewed.refreshToken);}
+          else await hydrate(access, refresh);
+        }
       } catch { await clear(); }
       finally { setBooting(false); }
     })();
@@ -91,12 +98,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await clear();
   }, [clear, refreshToken]);
 
+  const selectTenant=useCallback(async(tenantId:string)=>{const selected=tenants.find(item=>item.id===tenantId);if(!selected)return;await SecureStore.setItemAsync(TENANT_KEY,selected.id);setTenant(selected);},[tenants]);
+
+  useEffect(()=>{
+    if(!claims?.exp||!refreshToken)return;
+    const delay=Math.max(1_000,claims.exp*1000-Date.now()-60_000);
+    const timer=setTimeout(()=>{void(async()=>{try{const renewed=await api.refreshAuth(refreshToken);await saveTokens(renewed.accessToken,renewed.refreshToken);await hydrate(renewed.accessToken,renewed.refreshToken);}catch{await clear();}})();},delay);
+    return()=>clearTimeout(timer);
+  },[claims?.exp,refreshToken,hydrate,clear]);
+
   const refreshProfile = useCallback(async () => {
     if (!token || !claims) return;
     setProfile(await api.userByAuth(claims.sub, token));
   }, [claims, token]);
 
-  const value = useMemo(() => ({ booting, token, refreshToken, claims, tenant, profile, signIn, register, signOut, refreshProfile }), [booting, token, refreshToken, claims, tenant, profile, signIn, register, signOut, refreshProfile]);
+  const value = useMemo(() => ({ booting, token, refreshToken, claims, tenants, tenant, profile, signIn, register, signOut, selectTenant, refreshProfile }), [booting, token, refreshToken, claims, tenants, tenant, profile, signIn, register, signOut, selectTenant, refreshProfile]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

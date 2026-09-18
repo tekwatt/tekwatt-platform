@@ -9,8 +9,12 @@ import { ChargingScreen } from '../screens/ChargingScreen';
 import { WalletScreen } from '../screens/WalletScreen';
 import { MoreScreen } from '../screens/MoreScreen';
 import { SupportScreen } from '../screens/SupportScreen';
+import { ReservationsScreen } from '../screens/ReservationsScreen';
+import { InvoicesScreen } from '../screens/InvoicesScreen';
+import { RfidCardsScreen } from '../screens/RfidCardsScreen';
+import { SecurityScreen } from '../screens/SecurityScreen';
 
-export type RootStackParamList = { Main: undefined; Support: undefined };
+export type RootStackParamList = { Main: undefined; Support: undefined; Reservations:undefined;Invoices:undefined;RfidCards:undefined;Security:undefined };
 export type MainTabsParamList = { Home: undefined; Stations: undefined; Charge: undefined; Wallet: undefined; More: undefined };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -31,7 +35,7 @@ function MainTabs() {
 
 export function AppNavigator() {
   const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background, card: colors.surface, primary: colors.blue, border: colors.line, text: colors.ink, notification: colors.red } };
-  return <NavigationContainer theme={theme}><Stack.Navigator screenOptions={{ headerTintColor: colors.ink, headerTitleStyle: { fontWeight: '900' }, headerShadowVisible: false, headerStyle: { backgroundColor: colors.background }, contentStyle: { backgroundColor: colors.background } }}><Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }}/><Stack.Screen name="Support" component={SupportScreen}/></Stack.Navigator></NavigationContainer>;
+  return <NavigationContainer theme={theme}><Stack.Navigator screenOptions={{ headerTintColor: colors.ink, headerTitleStyle: { fontWeight: '900' }, headerShadowVisible: false, headerStyle: { backgroundColor: colors.background }, contentStyle: { backgroundColor: colors.background } }}><Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }}/><Stack.Screen name="Support" component={SupportScreen}/><Stack.Screen name="Reservations" component={ReservationsScreen}/><Stack.Screen name="Invoices" component={InvoicesScreen}/><Stack.Screen name="RfidCards" component={RfidCardsScreen} options={{title:'RFID cards'}}/><Stack.Screen name="Security" component={SecurityScreen}/></Stack.Navigator></NavigationContainer>;
 }
 
 const styles = StyleSheet.create({ tabBar: { height: 70, paddingTop: 7, paddingBottom: 9, borderTopColor: colors.line, backgroundColor: colors.white }, label: { fontSize: 10, fontWeight: '800' }, icon: { minWidth: 31, height: 27, paddingHorizontal: 6, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, iconActive: { backgroundColor: colors.surfaceSoft }, symbol: { color: '#78909B', fontSize: 17, fontWeight: '900' }, symbolActive: { color: colors.blue } });

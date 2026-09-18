@@ -9,8 +9,16 @@ Customer-facing Expo/React Native app for the TekWatt EV Charging Platform.
 - Station search, connector selection, and charging-session start
 - Active-session monitoring and stop flow
 - Wallet and payment history
-- Support ticket creation and lifecycle status
-- Customer profile, workspace, gateway details, and logout
+- Wallet ledger and balance activity
+- Reservations with customer cancellation
+- Invoices and payment status
+- Assigned RFID charging cards
+- Support ticket creation, conversation and lifecycle status
+- Editable customer profile and multi-workspace switching
+- Signed-in device review and remote session revocation
+- Automatic access-token renewal
+- Station directions using saved latitude and longitude
+- Live station and charging refresh while screens are open
 
 ## API connection
 
@@ -37,5 +45,16 @@ Install Android Studio and create an emulator first, or connect an Android phone
 
 ```powershell
 & "C:\Program Files\nodejs\npm.cmd" run typecheck
-& "C:\Program Files\nodejs\npx.cmd" expo-doctor
+& "C:\Program Files\nodejs\npm.cmd" run doctor
+& "C:\Program Files\nodejs\npm.cmd" run export:android
 ```
+
+## Build an installable Android APK
+
+```powershell
+Set-Location C:\Users\magpier\tekwatt\frontend\mobile-app
+& "C:\Program Files\nodejs\npx.cmd" eas login
+& "C:\Program Files\nodejs\npx.cmd" eas build --platform android --profile preview
+```
+
+The preview profile produces an APK for direct installation. The production profile produces an Android App Bundle for Google Play.
