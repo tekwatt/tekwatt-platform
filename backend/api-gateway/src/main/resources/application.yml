@@ -94,6 +94,10 @@ spring:
               uri: ${SUPPORT_SERVICE_URL:http://localhost:8101}
               predicates:
                 - Path=/api/v1/support/**
+            - id: ocpi-service
+              uri: ${OCPI_SERVICE_URL:http://localhost:8110}
+              predicates:
+                - Path=/ocpi/**
             - id: openapi-auth
               uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:

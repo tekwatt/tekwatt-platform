@@ -166,7 +166,7 @@ try {
         'billing-service', 'invoice-service', 'payment-service',
         'notification-service', 'ocpp-gateway', 'telemetry-service',
         'firmware-service', 'audit-service', 'analytics-service',
-        'reporting-service', 'admin-service', 'support-service'
+        'reporting-service', 'admin-service', 'support-service', 'ocpi-service'
     )
 
     foreach ($service in $services) {

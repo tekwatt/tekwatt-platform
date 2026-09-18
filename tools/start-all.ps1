@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$DatabasePassword,
     [int]$StartupTimeoutSeconds = 900,
-    [ValidateRange(1, 22)]
+    [ValidateRange(1, 23)]
     [int]$StartupBatchSize = 4,
     [ValidateRange(0, 60)]
     [int]$BatchDelaySeconds = 8,
@@ -35,6 +35,7 @@ $services = @(
     "reporting-service",
     "admin-service",
     "support-service",
+    "ocpi-service",
     "api-gateway"
 )
 
@@ -109,6 +110,7 @@ for ($index = 0; $index -lt $services.Count - 1; $index++) {
     $healthPorts[$services[$index]] = 8081 + $index
 }
 $healthPorts["api-gateway"] = 8080
+$healthPorts["ocpi-service"] = 8110
 
 $deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
 Write-Host "Waiting for all TekWatt services..." -ForegroundColor Cyan

@@ -47,6 +47,7 @@ var databaseNames = [
   'tekwatt_reporting'
   'tekwatt_admin'
   'tekwatt_support'
+  'tekwatt_ocpi'
 ]
 
 resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {

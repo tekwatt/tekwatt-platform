@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: ocpi-service
+  datasource:
+    url: ${OCPI_DATABASE_URL:jdbc:mysql://localhost:3306/tekwatt_ocpi?serverTimezone=UTC&sslMode=DISABLED&allowPublicKeyRetrieval=true}
+    username: ${DATABASE_USERNAME:tekwatt}
+    password: ${DATABASE_PASSWORD:change-me}
+server:
+  port: ${SERVER_PORT:8110}
+  forward-headers-strategy: framework
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+tekwatt:
+  ocpi:
+    public-base-url: ${OCPI_PUBLIC_BASE_URL:http://localhost:8080}
+    charger-service-url: ${CHARGER_SERVICE_URL:http://localhost:8083}
+    connector-service-url: ${CONNECTOR_SERVICE_URL:http://localhost:8087}

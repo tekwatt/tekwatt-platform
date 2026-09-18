@@ -86,6 +86,7 @@ var services = [
       { name: 'REPORTING_SERVICE_URL', value: 'http://reporting-service' }
       { name: 'ADMIN_SERVICE_URL', value: 'http://admin-service' }
       { name: 'SUPPORT_SERVICE_URL', value: 'http://support-service' }
+      { name: 'OCPI_SERVICE_URL', value: 'http://ocpi-service' }
     ]
   }
   {
@@ -303,6 +304,19 @@ var services = [
     external: false
     alwaysOn: false
     additionalEnvironment: []
+  }
+  {
+    name: 'ocpi-service'
+    port: 8110
+    databaseName: 'tekwatt_ocpi'
+    databaseEnvName: 'OCPI_DATABASE_URL'
+    external: false
+    alwaysOn: false
+    additionalEnvironment: [
+      { name: 'OCPI_PUBLIC_BASE_URL', value: 'https://api-gateway.${containerEnvironmentDefaultDomain}' }
+      { name: 'CHARGER_SERVICE_URL', value: 'http://charger-service' }
+      { name: 'CONNECTOR_SERVICE_URL', value: 'http://connector-service' }
+    ]
   }
 ]
 

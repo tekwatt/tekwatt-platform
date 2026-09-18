@@ -37,5 +37,6 @@
     <module>reporting-service</module>
     <module>admin-service</module>
     <module>support-service</module>
+    <module>ocpi-service</module>
   </modules>
 </project>
