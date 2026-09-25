@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 const navigation = await import('../src/navigation.ts');
 
-const allPermissions = new Set(['Dashboard', 'Roles']);
+const allPermissions = new Set(navigation.pageOrder.filter(page => !navigation.navigationScreens[page]));
 for (const screens of Object.values(navigation.navigationScreens)) {
   for (const screen of screens) allPermissions.add(screen);
 }

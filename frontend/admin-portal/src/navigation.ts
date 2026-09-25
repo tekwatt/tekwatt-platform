@@ -10,6 +10,7 @@ export type Page =
   | 'Support'
   | 'Roles'
   | 'Admins'
+  | 'Network Partners'
   | 'Settings';
 
 export type NavigationTarget = { page: Page; view?: string };
@@ -22,14 +23,14 @@ export const navigationScreens: Partial<Record<Page, readonly string[]>> = {
   Managers: ['Employees', 'Franchises', 'Vendors', 'Projects', 'CRM / Leads'],
   Content: ['Notifications', 'Offers & Coupons'],
   Reports: ['Reports', 'Analytics', 'Station Performance', 'Daily Report', 'Diagnostics', 'OCPP Logs', 'Firmware'],
-  Support: ['Support Tickets', 'Maintenance', 'AMC Contracts'],
+  Support: ['Station Reviews', 'Support Tickets', 'Maintenance', 'AMC Contracts'],
   Admins: ['Administrators', 'API Keys', 'Install Modules'],
-  Settings: ['General Settings', 'Account Settings'],
+  Settings: ['General Settings', 'Pricing Configuration', 'Email & Newsletter', 'OCPP Schemas', 'Account Settings'],
 };
 
 export const pageOrder: readonly Page[] = [
   'Dashboard', 'Stations', 'Sessions', 'Payments', 'Users', 'Managers',
-  'Content', 'Reports', 'Support', 'Roles', 'Admins', 'Settings',
+  'Content', 'Reports', 'Support', 'Roles', 'Admins', 'Network Partners', 'Settings',
 ];
 
 const slugify = (value: string) => value

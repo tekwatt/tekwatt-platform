@@ -40,6 +40,11 @@ export type AdminApiKey={id:string;tenantId:string;keyId:string;secret?:string;n
 export type Tariff={id:string;tenantId:string;code:string;name:string;energyPricePerKwh:number;timePricePerMinute:number;sessionFee:number;taxPercent:number;currency:string;status:string;validFrom:string;validTo?:string};
 export type TariffAssignment={id:string;tenantId:string;tariffId:string;chargerId:string;assignedAt:string};
 export type PlatformModule={id:string;name:string;description:string;capabilities:string[];dependencies:string[];available:boolean;installed:boolean;operational:boolean;status:'AVAILABLE'|'INSTALLED'|'DEGRADED'|'NOT_IMPLEMENTED';installedAt?:string};
+export type StationReview={id:string;tenantId:string;stationId:string;customerId?:string;customerName:string;rating:number;comment:string;status:'PENDING'|'PUBLISHED'|'HIDDEN';createdAt:string;updatedAt:string};
+export type OcpiConfiguration={tenantId?:string;countryCode?:string;partyId?:string;businessName?:string;country?:string;timeZone?:string;enabled?:boolean};
+export type OcpiPartner={id:number;partnerName:string;countryCode:string;partyId:string;versionsUrl:string;rolesJson?:string;status:string;enabled:boolean;createdAt:string;updatedAt:string};
+export type OcpiSummary={partners:number;tokens:number;cdrs:number;commands:number};
+export type OcpiCredentials={data:{token:string;url:string;roles:unknown[]};status_code:number;timestamp:string};
 
 class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -198,7 +203,7 @@ export const api = {
     const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = fileName; link.click(); URL.revokeObjectURL(url);
   },
   notifications: (tenantId: string) => request<Notification[]>(`/api/v1/notifications?tenantId=${encodeURIComponent(tenantId)}`),
-  createNotification: (body: { tenantId: string; idempotencyKey: string; channel: string; recipient: string; subject?: string; body: string; maxAttempts: number }) => request<Notification>('/api/v1/notifications', { method: 'POST', body: JSON.stringify(body) }),
+  createNotification: (body: { tenantId: string; userId?:string; idempotencyKey: string; channel: string; recipient: string; subject?: string; body: string; templateKey?:string; maxAttempts: number }) => request<Notification>('/api/v1/notifications', { method: 'POST', body: JSON.stringify(body) }),
   sendNotification: (id: string) => request<Notification>(`/api/v1/notifications/${id}/send`, { method: 'POST' }),
   retryNotification: (id: string) => request<Notification>(`/api/v1/notifications/${id}/retry`, { method: 'POST' }),
   updateTenant: (id: string, body: { name: string; slug: string; contactEmail: string }) => request<Tenant>(`/api/v1/tenants/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
@@ -231,6 +236,15 @@ export const api = {
   amcContracts:(tenantId:string)=>request<AmcContract[]>(`/api/v1/support/amc-contracts?tenantId=${encodeURIComponent(tenantId)}`),
   createAmcContract:(body:Record<string,unknown>)=>request<AmcContract>('/api/v1/support/amc-contracts',{method:'POST',body:JSON.stringify(body)}),
   setAmcStatus:(id:string,status:string)=>request<AmcContract>(`/api/v1/support/amc-contracts/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
+  stationReviews:(tenantId:string)=>request<StationReview[]>(`/api/v1/support/station-reviews?tenantId=${encodeURIComponent(tenantId)}`),
+  createStationReview:(body:{tenantId:string;stationId:string;customerId?:string;customerName:string;rating:number;comment:string})=>request<StationReview>('/api/v1/support/station-reviews',{method:'POST',body:JSON.stringify(body)}),
+  moderateStationReview:(id:string,status:'PENDING'|'PUBLISHED'|'HIDDEN')=>request<StationReview>(`/api/v1/support/station-reviews/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
+  ocpiConfiguration:(tenantId:string)=>request<OcpiConfiguration>(`/api/v1/ocpi/configuration?tenantId=${encodeURIComponent(tenantId)}`),
+  saveOcpiConfiguration:(tenantId:string,body:Required<Pick<OcpiConfiguration,'countryCode'|'partyId'|'businessName'|'country'|'timeZone'>>)=>request<OcpiConfiguration>(`/api/v1/ocpi/configuration?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
+  ocpiPartners:(tenantId:string)=>request<OcpiPartner[]>(`/api/v1/ocpi/partners?tenantId=${encodeURIComponent(tenantId)}`),
+  registerOcpiPartner:(tenantId:string,body:Record<string,unknown>)=>request<OcpiCredentials>(`/api/v1/ocpi/partners?tenantId=${encodeURIComponent(tenantId)}`,{method:'POST',body:JSON.stringify(body)}),
+  unregisterOcpiPartner:(tenantId:string,id:number)=>request<void>(`/api/v1/ocpi/partners/${id}?tenantId=${encodeURIComponent(tenantId)}`,{method:'DELETE'}),
+  ocpiSummary:(tenantId:string)=>request<OcpiSummary>(`/api/v1/ocpi/summary?tenantId=${encodeURIComponent(tenantId)}`),
   serviceStatus: async (slug: string) => { const response = await fetch(`${API_BASE}/openapi/${slug}/v3/api-docs`); return response.ok; },
   roles:(tenantId:string)=>request<RolePolicy[]>(`/api/v1/admin/governance/roles?tenantId=${encodeURIComponent(tenantId)}`),
   saveRole:(tenantId:string,body:{roleName:string;permissions:string[]})=>request<RolePolicy>(`/api/v1/admin/governance/roles?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),

@@ -15,10 +15,10 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class GovernanceService {
     public static final Map<String, Set<String>> DEFAULT_ROLE_PERMISSIONS = Map.of(
-        "ADMIN", Set.of("Dashboard", "Stations", "Chargers", "Connectors", "Map View", "Tariff Management", "Configuration", "Charging Sessions", "Live Monitoring", "Remote Control", "Transactions", "Scan & Pay", "Wallet", "Invoices", "Payment Gateways", "Customers", "Partners", "Technicians", "RFID Cards", "Employees", "Franchises", "Vendors", "Projects", "CRM / Leads", "Notifications", "Offers & Coupons", "Support Tickets", "Maintenance", "AMC Contracts", "Reports", "Analytics", "Station Performance", "Daily Report", "Diagnostics", "OCPP Logs", "Firmware", "Roles", "Administrators", "API Keys", "Install Modules", "General Settings", "Account Settings"),
+        "ADMIN", Set.of("Dashboard", "Stations", "Chargers", "Connectors", "Map View", "Tariff Management", "Configuration", "Charging Sessions", "Live Monitoring", "Remote Control", "Transactions", "Scan & Pay", "Wallet", "Invoices", "Payment Gateways", "Customers", "Partners", "Technicians", "RFID Cards", "Employees", "Franchises", "Vendors", "Projects", "CRM / Leads", "Notifications", "Offers & Coupons", "Station Reviews", "Support Tickets", "Maintenance", "AMC Contracts", "Reports", "Analytics", "Station Performance", "Daily Report", "Diagnostics", "OCPP Logs", "Firmware", "Roles", "Administrators", "API Keys", "Install Modules", "Network Partners", "General Settings", "Pricing Configuration", "Email & Newsletter", "OCPP Schemas", "Account Settings"),
         "PARTNER", Set.of("Dashboard", "Customers", "Stations", "Chargers", "Connectors", "Live Monitoring", "Map View", "Tariff Management", "RFID Cards", "Charging Sessions", "Transactions", "Scan & Pay", "Wallet", "Invoices", "Support Tickets", "Reports", "Analytics", "Station Performance"),
         "TECHNICIAN", Set.of("Dashboard", "Stations", "Chargers", "Connectors", "Live Monitoring", "Map View", "Support Tickets", "Maintenance", "Diagnostics", "OCPP Logs", "Firmware"),
-        "CUSTOMER", Set.of("Dashboard", "Stations", "Map View", "RFID Cards", "Offers & Coupons", "Charging Sessions", "Transactions", "Scan & Pay", "Wallet", "Invoices", "Support Tickets")
+        "CUSTOMER", Set.of("Dashboard", "Stations", "Map View", "RFID Cards", "Offers & Coupons", "Charging Sessions", "Transactions", "Scan & Pay", "Wallet", "Invoices", "Station Reviews", "Support Tickets")
     );
 
     private final RolePolicyRepository roles;
