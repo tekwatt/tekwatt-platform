@@ -559,6 +559,22 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
   const [realtime, setRealtime] = useState<'live' | 'connecting' | 'offline'>(demo ? 'offline' : 'connecting');
   const [pendingMutations, setPendingMutations] = useState(0);
   useEffect(() => subscribeApiMutations(setPendingMutations), []);
+  const activeDataKeys=useMemo(()=>{
+    const keys=new Set<string>(['users','roles','modules']);
+    const add=(...items:string[])=>items.forEach(item=>keys.add(item));
+    if(page==='Dashboard')add('chargers','sessions','payments','notifications');
+    else if(page==='Stations')add('chargers','partners','tariffs','tariffAssignments');
+    else if(page==='Sessions')add('chargers','sessions','connections','messages');
+    else if(page==='Payments')add('chargers','payments','bills','invoices','paymentGateways','wallets','scanPayOrders');
+    else if(page==='Users')add('partners','technicians','rfidCards');
+    else if(page==='Managers')add('governanceSettings');
+    else if(page==='Content')add('notifications','governanceSettings');
+    else if(page==='Reports')add('chargers','sessions','payments','reports','messages','firmwarePackages','firmwareJobs');
+    else if(page==='Support')add('chargers','supportTickets','administrators','maintenanceJobs','amcContracts','partners','technicians');
+    else if(page==='Admins')add('administrators','adminApiKeys');
+    else if(page==='Settings')add('governanceSettings');
+    return [...keys].sort().join(',');
+  },[page,stationView,sessionView,reportView,paymentView,userView,managerView,contentView,supportView,adminView,settingsView]);
   const refresh = async (silent = false, requestedTenantId = selectedTenantId) => {
     if (demo) return;
     if (!silent) setLoading(true);
@@ -568,15 +584,18 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
       if (!tenants.length) throw new Error('No tenant exists yet. Create a tenant in Swagger before loading operational data.');
       setTenants(tenants);const tenant = tenants.find(item=>item.id===requestedTenantId)??tenants.find(item=>item.id===localStorage.getItem('tekwatt-workspace-id'))??tenants[0];
       if(tenant.id!==selectedTenantId)setSelectedTenantId(tenant.id);localStorage.setItem('tekwatt-workspace-id',tenant.id);
-      const results = await Promise.allSettled([
-        api.chargers(tenant.id), api.sessions(tenant.id), api.payments(tenant.id), api.users(tenant.id), api.reports(tenant.id), api.notifications(tenant.id), api.ocppConnections(), api.ocppMessages(), api.firmwarePackages(), api.firmwareJobs(tenant.id), api.supportTickets(tenant.id), api.bills(tenant.id), api.invoices(tenant.id), api.paymentGateways(tenant.id), api.wallets(tenant.id), api.scanPayOrders(tenant.id), api.partners(tenant.id), api.technicians(tenant.id), api.rfidCards(tenant.id),api.maintenanceJobs(tenant.id),api.amcContracts(tenant.id),api.roles(tenant.id),api.administrators(tenant.id),api.adminApiKeys(tenant.id),api.governanceSettings(tenant.id),api.tariffs(tenant.id),api.tariffAssignments(tenant.id),api.modules(tenant.id),
-      ]);
-      const value = <T,>(index: number) => results[index].status === 'fulfilled' ? results[index].value as T[] : [];
-      const chargers = value<Charger>(0);
-      const connectorResults = await Promise.allSettled(chargers.map(charger => api.connectors(charger.id)));
-      const connectors = connectorResults.flatMap(result => result.status === 'fulfilled' ? result.value : []);
-      const failed = results.filter(result => result.status === 'rejected').length + connectorResults.filter(result => result.status === 'rejected').length;
-      setData({ tenant, chargers, connectors, sessions: value<ChargingSession>(1), payments: value<Payment>(2), users: value<UserProfile>(3), reports: value<Report>(4), notifications: value<Notification>(5), connections: value<OcppConnection>(6), messages: value<OcppMessage>(7), firmwarePackages: value<FirmwarePackage>(8), firmwareJobs: value<FirmwareJob>(9), supportTickets: value<SupportTicket>(10), bills:value<Bill>(11), invoices:value<Invoice>(12), paymentGateways:value<PaymentGateway>(13), wallets:value<Wallet>(14), scanPayOrders:value<ScanPayOrder>(15),partners:value<Partner>(16),technicians:value<Technician>(17),rfidCards:value<RfidCard>(18),maintenanceJobs:value<MaintenanceJob>(19),amcContracts:value<AmcContract>(20),roles:value<RolePolicy>(21),administrators:value<Administrator>(22),adminApiKeys:value<AdminApiKey>(23),governanceSettings:results[24].status==='fulfilled'?results[24].value as Record<string,string>:{},tariffs:value<Tariff>(25),tariffAssignments:value<TariffAssignment>(26),modules:value<PlatformModule>(27) });
+      const requests:Record<string,()=>Promise<unknown>>={
+        chargers:()=>api.chargers(tenant.id),sessions:()=>api.sessions(tenant.id),payments:()=>api.payments(tenant.id),users:()=>api.users(tenant.id),reports:()=>api.reports(tenant.id),notifications:()=>api.notifications(tenant.id),connections:()=>api.ocppConnections(),messages:()=>api.ocppMessages(),firmwarePackages:()=>api.firmwarePackages(),firmwareJobs:()=>api.firmwareJobs(tenant.id),supportTickets:()=>api.supportTickets(tenant.id),bills:()=>api.bills(tenant.id),invoices:()=>api.invoices(tenant.id),paymentGateways:()=>api.paymentGateways(tenant.id),wallets:()=>api.wallets(tenant.id),scanPayOrders:()=>api.scanPayOrders(tenant.id),partners:()=>api.partners(tenant.id),technicians:()=>api.technicians(tenant.id),rfidCards:()=>api.rfidCards(tenant.id),maintenanceJobs:()=>api.maintenanceJobs(tenant.id),amcContracts:()=>api.amcContracts(tenant.id),roles:()=>api.roles(tenant.id),administrators:()=>api.administrators(tenant.id),adminApiKeys:()=>api.adminApiKeys(tenant.id),governanceSettings:()=>api.governanceSettings(tenant.id),tariffs:()=>api.tariffs(tenant.id),tariffAssignments:()=>api.tariffAssignments(tenant.id),modules:()=>api.modules(tenant.id),
+      };
+      const keys=activeDataKeys.split(',').filter(key=>requests[key]);
+      const results=await Promise.allSettled(keys.map(key=>requests[key]()));
+      const updates:Partial<LiveData>={tenant};let failed=0;
+      results.forEach((result,index)=>{if(result.status==='fulfilled')(updates as Record<string,unknown>)[keys[index]]=result.value;else failed+=1;});
+      const chargers=updates.chargers as Charger[]|undefined;
+      const connectorResults=chargers?await Promise.allSettled(chargers.map(charger=>api.connectors(charger.id))):[];
+      if(chargers)updates.connectors=connectorResults.flatMap(result=>result.status==='fulfilled'?result.value:[]);
+      failed+=connectorResults.filter(result=>result.status==='rejected').length;
+      setData(current=>({...current,...updates}));
       if (failed) setLoadError(`${failed} service${failed > 1 ? 's are' : ' is'} temporarily unavailable. Available data is still shown.`);
     } catch (reason) { setLoadError(reason instanceof Error ? reason.message : 'Backend data could not be loaded'); }
     finally { setLoading(false); }
@@ -584,7 +603,7 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
   const selectWorkspace=async(id:string)=>{if(id===selectedTenantId)return;setSelectedTenantId(id);localStorage.setItem('tekwatt-workspace-id',id);setData(current=>({...current,tenant:tenants.find(item=>item.id===id),chargers:[],connectors:[],sessions:[],payments:[],users:[],reports:[],notifications:[],supportTickets:[],bills:[],invoices:[],wallets:[],scanPayOrders:[],partners:[],technicians:[],rfidCards:[],maintenanceJobs:[],amcContracts:[],roles:[],administrators:[],adminApiKeys:[],governanceSettings:{},tariffs:[],tariffAssignments:[],modules:[]}));await refresh(false,id);};
   const workspaceSaved=async(tenant:Tenant)=>{setTenants(current=>[...current.filter(item=>item.id!==tenant.id),tenant]);setShowWorkspaces(false);if(tenant.id===selectedTenantId)await refresh(false,tenant.id);else await selectWorkspace(tenant.id);};
   const stationSaved=async(changed:Charger[])=>{const changedIds=new Set(changed.map(charger=>charger.id));setData(current=>({...current,chargers:[...changed,...current.chargers.filter(charger=>!changedIds.has(charger.id))]}));await refresh(true);};
-  useEffect(() => { void refresh(); }, [demo]);
+  useEffect(() => { void refresh(); }, [demo,activeDataKeys]);
   useEffect(() => {
     if (demo || !data.tenant) { setRealtime('offline'); return; }
     setRealtime('connecting');
@@ -592,9 +611,9 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
     source.addEventListener('connected', () => setRealtime('live'));
     source.addEventListener('refresh', () => { setRealtime('live'); void refresh(true); });
     source.onerror = () => setRealtime('connecting');
-    const fallback = window.setInterval(() => void refresh(true), 15_000);
+    const fallback = window.setInterval(() => void refresh(true), 60_000);
     return () => { source.close(); window.clearInterval(fallback); };
-  }, [demo, data.tenant?.id]);
+  }, [demo, data.tenant?.id,activeDataKeys]);
   const stationRows = demo ? stations : stationRowsFromChargers(data.chargers);
   const sessionRows = demo ? sessions : data.sessions.map(session => { const charger=data.chargers.find(item=>item.id===session.chargerId); return { id: session.transactionId || session.id, station: charger ? stationNameOf(charger) : 'Unknown charger', energy: `${session.energyKwh ?? 0} kWh`, amount: `${session.currency ?? 'INR'} ${session.totalCost ?? 0}`, status: session.status, time: session.startedAt ? new Date(session.startedAt).toLocaleString() : '—' }; });
   const applyNavigation=(destination:NavigationTarget)=>{setPage(destination.page);if(!destination.view)return;if(destination.page==='Stations')setStationView(destination.view);else if(destination.page==='Sessions')setSessionView(destination.view);else if(destination.page==='Payments')setPaymentView(destination.view);else if(destination.page==='Users')setUserView(destination.view);else if(destination.page==='Managers')setManagerView(destination.view);else if(destination.page==='Content')setContentView(destination.view);else if(destination.page==='Reports')setReportView(destination.view);else if(destination.page==='Support')setSupportView(destination.view);else if(destination.page==='Admins')setAdminView(destination.view);else if(destination.page==='Settings')setSettingsView(destination.view);};

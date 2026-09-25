@@ -80,6 +80,8 @@ export function subscribeApiMutations(listener: MutationListener) {
 
 async function performRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = sessionStorage.getItem('tekwatt-access-token');
+  const method=(options.method??'GET').toUpperCase();
+  const canRetry=['GET','HEAD','OPTIONS'].includes(method);
   const execute=async(accessToken:string|null)=>{try{return await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
@@ -89,12 +91,20 @@ async function performRequest<T>(path: string, options: RequestInit = {}): Promi
     },
     signal:options.signal??AbortSignal.timeout(API_TIMEOUT_MS),
   });}catch(reason){if(reason instanceof DOMException&&['AbortError','TimeoutError'].includes(reason.name))throw new ApiError('The request took too long to complete. Please check your connection and try again.',408);throw new ApiError('Unable to connect to TekWatt services. Check your internet or server connection and try again.',0);}};
-  let response = await execute(token);
+  const executeWithWarmupRetry=async(accessToken:string|null)=>{
+    let response=await execute(accessToken);
+    if(canRetry&&[502,503,504].includes(response.status)){
+      await new Promise(resolve=>window.setTimeout(resolve,1200));
+      response=await execute(accessToken);
+    }
+    return response;
+  };
+  let response = await executeWithWarmupRetry(token);
   if(response.status===401&&!path.startsWith('/api/v1/auth/login')&&!path.startsWith('/api/v1/auth/register')&&!path.startsWith('/api/v1/auth/refresh')){
     const refreshToken=sessionStorage.getItem('tekwatt-refresh-token');
     if(refreshToken){
       refreshOperation??=fetch(`${API_BASE}/api/v1/auth/refresh`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken})}).then(async result=>{if(!result.ok)return null;const tokens=await result.json() as TokenResponse;sessionStorage.setItem('tekwatt-access-token',tokens.accessToken);sessionStorage.setItem('tekwatt-refresh-token',tokens.refreshToken);return tokens.accessToken;}).catch(()=>null).finally(()=>{refreshOperation=null;});
-      const renewed=await refreshOperation;if(renewed)response=await execute(renewed);
+      const renewed=await refreshOperation;if(renewed)response=await executeWithWarmupRetry(renewed);
     }
   }
   if (!response.ok) {

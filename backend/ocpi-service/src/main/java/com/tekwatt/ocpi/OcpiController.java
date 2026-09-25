@@ -1,6 +1,8 @@
 package com.tekwatt.ocpi;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -27,6 +29,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/ocpi/{tenantId}")
+@Tag(name = "OCPI 2.2.1", description = "Tenant-scoped CPO roaming platform")
 public class OcpiController {
     private final JdbcTemplate jdbc;
     private final LocationMapper locationMapper;
@@ -51,19 +54,28 @@ public class OcpiController {
     }
 
     @GetMapping("/versions")
+    @Operation(summary = "List supported OCPI versions")
     public Map<String, Object> versions(@PathVariable UUID tenantId) {
         return OcpiProtocol.envelope(List.of(Map.of("version", "2.2.1",
                 "url", baseUrl + "/ocpi/" + tenantId + "/2.2.1")));
     }
 
     @GetMapping("/2.2.1")
+    @Operation(summary = "Discover implemented OCPI 2.2.1 endpoints")
     public Map<String, Object> versionDetails(@PathVariable UUID tenantId) {
+        String root = baseUrl + "/ocpi/" + tenantId + "/2.2.1/";
         return OcpiProtocol.envelope(Map.of("version", "2.2.1", "endpoints", List.of(
-                Map.of("identifier", "locations", "role", "SENDER",
-                        "url", baseUrl + "/ocpi/" + tenantId + "/2.2.1/locations"))));
+                Map.of("identifier", "credentials", "role", "RECEIVER", "url", root + "credentials"),
+                Map.of("identifier", "locations", "role", "SENDER", "url", root + "locations"),
+                Map.of("identifier", "tokens", "role", "RECEIVER", "url", root + "tokens"),
+                Map.of("identifier", "tariffs", "role", "SENDER", "url", root + "tariffs"),
+                Map.of("identifier", "sessions", "role", "SENDER", "url", root + "sessions"),
+                Map.of("identifier", "cdrs", "role", "SENDER", "url", root + "cdrs"),
+                Map.of("identifier", "commands", "role", "RECEIVER", "url", root + "commands"))));
     }
 
     @GetMapping("/2.2.1/locations")
+    @Operation(summary = "List live locations with date filtering and pagination")
     public ResponseEntity<Map<String, Object>> locations(@PathVariable UUID tenantId,
             @RequestParam(name = "date_from", required = false) String dateFrom,
             @RequestParam(name = "date_to", required = false) String dateTo,
@@ -100,12 +112,14 @@ public class OcpiController {
     }
 
     @GetMapping("/2.2.1/locations/{countryCode}/{partyId}/{locationId}")
+    @Operation(summary = "Get one location")
     public Map<String, Object> location(@PathVariable UUID tenantId, @PathVariable String countryCode,
             @PathVariable String partyId, @PathVariable UUID locationId) {
         return OcpiProtocol.envelope(loadLocation(tenantId, countryCode, partyId, locationId));
     }
 
     @GetMapping("/2.2.1/locations/{countryCode}/{partyId}/{locationId}/{evseUid}")
+    @Operation(summary = "Get one EVSE")
     public Map<String, Object> evse(@PathVariable UUID tenantId, @PathVariable String countryCode,
             @PathVariable String partyId, @PathVariable UUID locationId, @PathVariable String evseUid) {
         Map<String, Object> location = loadLocation(tenantId, countryCode, partyId, locationId);
@@ -116,6 +130,7 @@ public class OcpiController {
     }
 
     @GetMapping("/2.2.1/locations/{countryCode}/{partyId}/{locationId}/{evseUid}/{connectorId}")
+    @Operation(summary = "Get one connector")
     public Map<String, Object> connector(@PathVariable UUID tenantId, @PathVariable String countryCode,
             @PathVariable String partyId, @PathVariable UUID locationId, @PathVariable String evseUid,
             @PathVariable String connectorId) {

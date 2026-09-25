@@ -48,9 +48,16 @@ public class OcpiProtocol extends OncePerRequestFilter {
             error(request, response, 401, 2000, "Invalid OCPI credentials");
             return;
         }
+        String tenantRoot = "/ocpi/" + parts[2];
+        String uri = request.getRequestURI().replaceAll("/+$", "");
+        boolean bootstrapAllowed = uri.equals(tenantRoot + "/versions")
+                || uri.equals(tenantRoot + "/2.2.1")
+                || uri.equals(tenantRoot + "/2.2.1/credentials");
         var hashes = jdbc.queryForList(
-                "SELECT t.token_sha256 FROM ocpi_partner_tokens t JOIN ocpi_parties p ON p.tenant_id = t.tenant_id WHERE t.tenant_id = ? AND t.enabled = TRUE AND p.enabled = TRUE",
-                String.class, parts[2]);
+                "SELECT t.token_sha256 FROM ocpi_partner_tokens t JOIN ocpi_parties p ON p.tenant_id = t.tenant_id " +
+                        "WHERE t.tenant_id = ? AND t.enabled = TRUE AND p.enabled = TRUE " +
+                        "AND (t.connection_status <> 'BOOTSTRAP' OR ? = TRUE)",
+                String.class, parts[2], bootstrapAllowed);
         String authorization = request.getHeader("Authorization");
         String token = authorization != null && authorization.startsWith("Token ")
                 ? authorization.substring(6).trim() : "";
@@ -91,6 +98,10 @@ public class OcpiProtocol extends OncePerRequestFilter {
 
     static Map<String, Object> envelope(Object data) {
         return Map.of("data", data, "status_code", 1000, "timestamp", Instant.now().toString());
+    }
+
+    static Map<String, Object> error(int status, String message) {
+        return Map.of("status_code", status, "status_message", message, "timestamp", Instant.now().toString());
     }
 
     private void error(HttpServletRequest request, HttpServletResponse response, int httpStatus, int ocpiStatus, String message) throws IOException {

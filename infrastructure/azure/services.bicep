@@ -316,6 +316,10 @@ var services = [
       { name: 'OCPI_PUBLIC_BASE_URL', value: 'https://api-gateway.${containerEnvironmentDefaultDomain}' }
       { name: 'CHARGER_SERVICE_URL', value: 'http://charger-service' }
       { name: 'CONNECTOR_SERVICE_URL', value: 'http://connector-service' }
+      { name: 'TARIFF_SERVICE_URL', value: 'http://tariff-service' }
+      { name: 'CHARGING_SESSION_SERVICE_URL', value: 'http://charging-session-service' }
+      { name: 'RESERVATION_SERVICE_URL', value: 'http://reservation-service' }
+      { name: 'OCPP_GATEWAY_URL', value: 'http://ocpp-gateway' }
     ]
   }
 ]

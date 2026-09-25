@@ -224,6 +224,12 @@ spring:
                 - Path=/openapi/support/v3/api-docs
               filters:
                 - SetPath=/v3/api-docs
+            - id: openapi-ocpi
+              uri: ${OCPI_SERVICE_URL:http://localhost:8110}
+              predicates:
+                - Path=/openapi/ocpi/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
 
 server:
   port: ${SERVER_PORT:8080}
@@ -300,3 +306,5 @@ springdoc:
         url: /openapi/admin/v3/api-docs
       - name: Support Service
         url: /openapi/support/v3/api-docs
+      - name: OCPI 2.2.1 Service
+        url: /openapi/ocpi/v3/api-docs

@@ -22,3 +22,7 @@ tekwatt:
     public-base-url: ${OCPI_PUBLIC_BASE_URL:http://localhost:8080}
     charger-service-url: ${CHARGER_SERVICE_URL:http://localhost:8083}
     connector-service-url: ${CONNECTOR_SERVICE_URL:http://localhost:8087}
+    tariff-service-url: ${TARIFF_SERVICE_URL:http://localhost:8088}
+    session-service-url: ${CHARGING_SESSION_SERVICE_URL:http://localhost:8084}
+    reservation-service-url: ${RESERVATION_SERVICE_URL:http://localhost:8089}
+    ocpp-gateway-url: ${OCPP_GATEWAY_URL:http://localhost:8094}

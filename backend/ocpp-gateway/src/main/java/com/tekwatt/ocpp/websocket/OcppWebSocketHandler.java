@@ -8,6 +8,7 @@ import com.tekwatt.ocpp.service.ConnectionRegistry;
 import com.tekwatt.ocpp.service.FirmwareStatusNotifier;
 import com.tekwatt.ocpp.service.OcppAuditService;
 import com.tekwatt.ocpp.service.OcppPlatformBridge;
+import com.tekwatt.ocpp.service.OcppCommandTracker;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -25,14 +26,16 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
     private final OcppAuditService audit;
     private final FirmwareStatusNotifier firmware;
     private final OcppPlatformBridge platform;
+    private final OcppCommandTracker commands;
 
     public OcppWebSocketHandler(ObjectMapper json, ConnectionRegistry registry, OcppAuditService audit,
-                                FirmwareStatusNotifier firmware, OcppPlatformBridge platform) {
+                                FirmwareStatusNotifier firmware, OcppPlatformBridge platform, OcppCommandTracker commands) {
         this.json = json;
         this.registry = registry;
         this.audit = audit;
         this.firmware = firmware;
         this.platform = platform;
+        this.commands = commands;
     }
 
     @Override public List<String> getSubProtocols() { return List.of("ocpp2.0.1", "ocpp1.6"); }
@@ -58,6 +61,7 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
         String uniqueId = root.get(1).asText("unknown");
         if (messageType == 3 || messageType == 4) {
             audit.record(stationId, "IN", messageType, uniqueId, null, message.getPayload());
+            commands.complete(uniqueId, messageType, root);
             return;
         }
         if (messageType != 2 || root.size() < 3) {

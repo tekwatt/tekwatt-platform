@@ -27,10 +27,12 @@ class ApiGatewayApplicationTests {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.urls").isArray()
-                .jsonPath("$.urls.length()").isEqualTo(21)
+                .jsonPath("$.urls.length()").isEqualTo(22)
                 .jsonPath("$.urls[?(@.name == 'Admin Service')].url")
                 .isEqualTo("/openapi/admin/v3/api-docs")
                 .jsonPath("$.urls[?(@.name == 'Support Service')].url")
-                .isEqualTo("/openapi/support/v3/api-docs");
+                .isEqualTo("/openapi/support/v3/api-docs")
+                .jsonPath("$.urls[?(@.name == 'OCPI 2.2.1 Service')].url")
+                .isEqualTo("/openapi/ocpi/v3/api-docs");
     }
 }
