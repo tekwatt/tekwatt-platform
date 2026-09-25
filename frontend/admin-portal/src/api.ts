@@ -1,5 +1,5 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
-const configuredTimeoutSeconds=Number(import.meta.env.VITE_API_TIMEOUT_SECONDS??30);const API_TIMEOUT_MS=(Number.isFinite(configuredTimeoutSeconds)&&configuredTimeoutSeconds>0?configuredTimeoutSeconds:30)*1000;
+const configuredTimeoutSeconds=Number(import.meta.env.VITE_API_TIMEOUT_SECONDS??12);const API_TIMEOUT_MS=(Number.isFinite(configuredTimeoutSeconds)&&configuredTimeoutSeconds>0?configuredTimeoutSeconds:12)*1000;
 
 export type TokenResponse = { accessToken: string; refreshToken: string; tokenType: string; expiresIn: number };
 export type UserSession={id:string;device:string;ipAddress?:string;createdAt:string;lastUsedAt:string;expiresAt:string;current:boolean};
@@ -213,6 +213,7 @@ export const api = {
   heartbeatCharger: (id: string) => request<Charger>(`/api/v1/chargers/${id}/heartbeat`, { method: 'POST' }),
   connectors: (chargerId: string) => request<Connector[]>(`/api/v1/connectors?chargerId=${encodeURIComponent(chargerId)}`),
   createConnector: (body: { tenantId: string; chargerId: string; connectorNumber: number; type: string; maxPowerKw: number; maxVoltage: number; maxCurrent: number }) => request<Connector>('/api/v1/connectors', { method: 'POST', body: JSON.stringify(body) }),
+  setConnectorStatus: (id:string,status:string) => request<Connector>(`/api/v1/connectors/${id}/status`, { method:'PATCH', body:JSON.stringify({status}) }),
   ocppConnections: () => request<OcppConnection[]>('/api/v1/ocpp/connections'),
   ocppMessages: () => request<OcppMessage[]>('/api/v1/ocpp/messages'),
   remoteStart: (body: { stationId: string; ocppVersion: string; connectorId: number; idToken: string }) => request<{messageId:string}>('/api/v1/ocpp/commands/remote-start', { method: 'POST', body: JSON.stringify(body) }),
@@ -245,7 +246,7 @@ export const api = {
   registerOcpiPartner:(tenantId:string,body:Record<string,unknown>)=>request<OcpiCredentials>(`/api/v1/ocpi/partners?tenantId=${encodeURIComponent(tenantId)}`,{method:'POST',body:JSON.stringify(body)}),
   unregisterOcpiPartner:(tenantId:string,id:number)=>request<void>(`/api/v1/ocpi/partners/${id}?tenantId=${encodeURIComponent(tenantId)}`,{method:'DELETE'}),
   ocpiSummary:(tenantId:string)=>request<OcpiSummary>(`/api/v1/ocpi/summary?tenantId=${encodeURIComponent(tenantId)}`),
-  serviceStatus: async (slug: string) => { const response = await fetch(`${API_BASE}/openapi/${slug}/v3/api-docs`); return response.ok; },
+  serviceStatus: async (slug: string) => { try { const response = await fetch(`${API_BASE}/openapi/${slug}/v3/api-docs`,{signal:AbortSignal.timeout(API_TIMEOUT_MS)}); return response.ok; } catch { return false; } },
   roles:(tenantId:string)=>request<RolePolicy[]>(`/api/v1/admin/governance/roles?tenantId=${encodeURIComponent(tenantId)}`),
   saveRole:(tenantId:string,body:{roleName:string;permissions:string[]})=>request<RolePolicy>(`/api/v1/admin/governance/roles?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
   administrators:(tenantId:string)=>request<Administrator[]>(`/api/v1/admin/governance/administrators?tenantId=${encodeURIComponent(tenantId)}`),

@@ -19,7 +19,7 @@ param ocppSharedKey string
 
 param frontendUrl string
 param imageTag string
-param backendMinReplicas int = 0
+param backendMinReplicas int = 1
 param alwaysOnMinReplicas int = 1
 param maxReplicas int = 2
 

@@ -9,7 +9,7 @@ param(
     [SecureString]$JwtSecret,
     [SecureString]$OcppSharedKey,
     [string]$ImageTag = (Get-Date -Format "yyyyMMddHHmmss"),
-    [int]$BackendMinReplicas = 0,
+    [int]$BackendMinReplicas = 1,
     [int]$AlwaysOnMinReplicas = 1,
     [int]$MaxReplicas = 2,
     [switch]$SkipBackendBuild,

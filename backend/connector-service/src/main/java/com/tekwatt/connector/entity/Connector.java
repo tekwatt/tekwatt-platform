@@ -24,7 +24,7 @@ public class Connector {
     public Connector(UUID tenantId, UUID chargerId, Integer connectorNumber, ConnectorType type, BigDecimal maxPowerKw, Integer maxVoltage, Integer maxCurrent) {
         this.id = UUID.randomUUID(); this.tenantId = tenantId; this.chargerId = chargerId; this.connectorNumber = connectorNumber;
         this.type = type; this.maxPowerKw = maxPowerKw; this.maxVoltage = maxVoltage; this.maxCurrent = maxCurrent;
-        this.status = ConnectorStatus.UNAVAILABLE; this.createdAt = Instant.now(); this.updatedAt = this.createdAt;
+        this.status = ConnectorStatus.AVAILABLE; this.createdAt = Instant.now(); this.updatedAt = this.createdAt;
     }
     public void update(ConnectorType type, BigDecimal maxPowerKw, Integer maxVoltage, Integer maxCurrent) {
         this.type = type; this.maxPowerKw = maxPowerKw; this.maxVoltage = maxVoltage; this.maxCurrent = maxCurrent; this.updatedAt = Instant.now();
