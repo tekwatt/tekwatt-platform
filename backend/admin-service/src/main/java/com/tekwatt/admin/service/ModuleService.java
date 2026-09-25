@@ -19,7 +19,7 @@ public class ModuleService {
     private record Definition(String id,String name,String description,List<String>capabilities,List<String>dependencies,boolean available){}
     private static final List<Definition> CATALOG=List.of(
       new Definition("smart-charging","Smart Charging","OCPP 2.0.1 remote commands, live telemetry and charging profiles.",List.of("Live Monitoring","Remote Control"),List.of("ocpp","telemetry"),true),
-      new Definition("fleet-management","Fleet Management","Fleet organisations, drivers, RFID access and charging assets.",List.of("Partners","RFID Cards","Employees","Franchises"),List.of("organization","user","charger"),true),
+      new Definition("fleet-management","Fleet Management","Fleet employees, franchises and managed charging assets.",List.of("Employees","Franchises"),List.of("organization","user","charger"),true),
       new Definition("ocpi-roaming","OCPI Roaming","CPO and eMSP roaming interoperability.",List.of("OCPI Roaming"),List.of("ocpi"),false),
       new Definition("demand-response","Demand Response","Grid signals and managed energy demand.",List.of("Demand Response"),List.of("energy-management"),false),
       new Definition("loyalty","Loyalty & Rewards","Customer points, tiers and charging rewards.",List.of("Loyalty & Rewards"),List.of("loyalty"),false),
