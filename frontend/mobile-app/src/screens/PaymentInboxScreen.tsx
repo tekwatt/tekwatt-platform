@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api/client';
@@ -11,13 +11,14 @@ import type { Invoice } from '../types';
 export function PaymentInboxScreen(){
   const {token,tenant,profile}=useAuth();
   const [items,setItems]=useState<Invoice[]>([]);const [error,setError]=useState('');const [loading,setLoading]=useState(false);
+  const generation=useRef(0);
   const load=useCallback(async()=>{
     if(!token||!tenant||!profile){setItems([]);return;}
-    setLoading(true);
-    try{const all=await api.invoices(tenant.id,token);setItems(all.filter(i=>i.userId===profile.id&&['ISSUED','OVERDUE','PAID'].includes(i.status)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));setError('');}
-    catch(e){setError(e instanceof Error?e.message:'Unable to refresh payment inbox.');}finally{setLoading(false);}
+    const current=++generation.current;setLoading(true);
+    try{const all=await api.invoices(tenant.id,token);if(current!==generation.current)return;setItems(all.filter(i=>i.userId===profile.id&&['ISSUED','OVERDUE','PAID'].includes(i.status)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));setError('');}
+    catch(e){if(current===generation.current)setError(e instanceof Error?e.message:'Unable to refresh payment inbox.');}finally{if(current===generation.current)setLoading(false);}
   },[token,tenant?.id,profile?.id]);
-  useFocusEffect(useCallback(()=>{setItems([]);void load();const timer=setInterval(()=>void load(),15000);return()=>clearInterval(timer);},[load]));
+  useFocusEffect(useCallback(()=>{setItems([]);void load();const timer=setInterval(()=>void load(),15000);return()=>{generation.current++;clearInterval(timer);};},[load]));
   const open=async(link:string)=>{try{await Linking.openURL(link);}catch{setError('Unable to open the payment page. Please try again.');}};
   return <Screen refreshing={loading} onRefresh={load}><PageHeader eyebrow="NOTIFICATIONS" title="Payment inbox" subtitle="Charging invoices refresh while this screen is open. Open a payment request or scan its QR code."/>{error?<ErrorBanner message={error}/>:null}{items.map(i=>{
     const due=['ISSUED','OVERDUE'].includes(i.status)&&Number(i.totalAmount)>0;const link=paymentLink(i.id,i.tenantId);

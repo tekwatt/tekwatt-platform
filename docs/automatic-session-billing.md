@@ -2,7 +2,7 @@
 
 New sessions stopped with COMPLETED status queue billing in the same database transaction as the final meter reading. A background worker runs every five seconds. It creates one bill per session, creates one invoice per bill, and issues that invoice. The customer web portal displays a payment-due notice and links to Payments → Invoices; invoice refresh runs every ten seconds while the customer is signed in.
 
-No money is collected automatically. Razorpay must be enabled and configured for the workspace. The customer explicitly chooses Pay online and completes checkout. This change does not enable SMS, payment links, or native Android checkout.
+No money is collected automatically. Razorpay must be enabled and configured for the workspace. The customer explicitly chooses Pay online and completes checkout. Optional SMS, mobile inbox and QR payment links are documented in [payment-notifications.md](payment-notifications.md); native Android checkout is not included.
 
 Zero-cost sessions retain a bill but do not issue a payment-request invoice.
 

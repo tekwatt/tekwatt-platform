@@ -132,6 +132,9 @@ var services = [
       { name: 'BILLING_SERVICE_URL', value: 'http://billing-service' }
       { name: 'INVOICE_SERVICE_URL', value: 'http://invoice-service' }
       { name: 'USER_SERVICE_URL', value: 'http://user-service' }
+      { name: 'NOTIFICATION_SERVICE_URL', value: 'http://notification-service' }
+      { name: 'CUSTOMER_PORTAL_URL', value: frontendUrl }
+      { name: 'PAYMENT_SMS_ENABLED', value: 'false' }
     ]
   }
   {

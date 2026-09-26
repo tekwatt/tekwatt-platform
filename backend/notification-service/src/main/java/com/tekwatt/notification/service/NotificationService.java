@@ -39,7 +39,8 @@ public class NotificationService {
     }
 
     public NotificationResponse send(UUID id) {
-        Notification notification = find(id);
+        Notification notification = repo.findForDelivery(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));
+        if (notification.getStatus() == NotificationStatus.SENT) return NotificationResponse.from(notification);
         if (notification.getStatus() != NotificationStatus.QUEUED)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Notification is not queued");
         try {
