@@ -1,9 +1,13 @@
 package com.tekwatt.ocpi;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +18,14 @@ import org.springframework.web.server.ResponseStatusException;
 public class OcpiAdminController {
     private final JdbcTemplate jdbc;
     private final OcpiCredentialsController credentials;
+    private final String bootstrapAdminKey;
+    private final SecureRandom random = new SecureRandom();
 
-    public OcpiAdminController(JdbcTemplate jdbc, OcpiCredentialsController credentials) {
+    public OcpiAdminController(JdbcTemplate jdbc, OcpiCredentialsController credentials,
+            @Value("${tekwatt.ocpi.bootstrap-admin-key:}") String bootstrapAdminKey) {
         this.jdbc = jdbc;
         this.credentials = credentials;
+        this.bootstrapAdminKey = bootstrapAdminKey;
     }
 
     @GetMapping("/configuration")
@@ -57,6 +65,35 @@ public class OcpiAdminController {
         if (configuration(tenantId).isEmpty())
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Save the local OCPI party configuration before registering a partner");
         return credentials.register(tenantId, body);
+    }
+
+    @PostMapping("/bootstrap-tokens")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createBootstrapToken(@RequestParam UUID tenantId,
+            @RequestHeader(value = "X-OCPI-Admin-Key", required = false) String suppliedAdminKey,
+            @RequestBody JsonNode body) {
+        if (bootstrapAdminKey.isBlank())
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "OCPI bootstrap token creation is not enabled");
+        if (suppliedAdminKey == null || !MessageDigest.isEqual(
+                bootstrapAdminKey.getBytes(StandardCharsets.UTF_8),
+                suppliedAdminKey.getBytes(StandardCharsets.UTF_8)))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid OCPI administration key");
+        if (configuration(tenantId).isEmpty())
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Save the local OCPI party configuration before creating a bootstrap token");
+
+        String partnerName = required(body, "partnerName");
+        if (partnerName.length() > 100)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "partnerName is too long");
+        byte[] bytes = new byte[32];
+        random.nextBytes(bytes);
+        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        jdbc.update("INSERT INTO ocpi_partner_tokens " +
+                        "(tenant_id,partner_name,token_sha256,enabled,connection_status) " +
+                        "VALUES(?,?,?,TRUE,'BOOTSTRAP')",
+                tenantId.toString(), partnerName, OcpiProtocol.sha256(token));
+        return Map.of("partnerName", partnerName, "token", token, "oneTime", true);
     }
 
     @DeleteMapping("/partners/{id}")

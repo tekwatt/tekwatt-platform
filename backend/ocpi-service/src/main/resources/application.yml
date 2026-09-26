@@ -20,6 +20,7 @@ management:
 tekwatt:
   ocpi:
     public-base-url: ${OCPI_PUBLIC_BASE_URL:http://localhost:8080}
+    bootstrap-admin-key: ${OCPI_BOOTSTRAP_ADMIN_KEY:}
     charger-service-url: ${CHARGER_SERVICE_URL:http://localhost:8083}
     connector-service-url: ${CONNECTOR_SERVICE_URL:http://localhost:8087}
     tariff-service-url: ${TARIFF_SERVICE_URL:http://localhost:8088}
