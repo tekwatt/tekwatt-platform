@@ -3,6 +3,7 @@ package com.tekwatt.gateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.http.HttpHeaders;
 import org.springframework.context.ApplicationContext;
@@ -13,15 +14,34 @@ import org.springframework.web.server.WebFilter;
 import java.util.concurrent.atomic.AtomicBoolean;
 import reactor.core.publisher.Mono;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "OCPP_REQUIRE_CREDENTIALS=true")
 @AutoConfigureWebTestClient
 class ApiGatewayApplicationTests {
     @Autowired WebTestClient webClient;
     @Autowired ApplicationContext context;
+    @LocalServerPort int port;
 
     @Test
     void contextLoads() {
         // Confirms the gateway configuration can be started by Spring Boot.
+    }
+
+    @Test
+    void challengesUnauthenticatedOcppBeforeWebSocketProxyUpgrade() {
+        WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build()
+                .get().uri("/ocpp/TEST-STATION")
+                .header(HttpHeaders.ORIGIN, "https://evcharger-simulator.com")
+                .header(HttpHeaders.UPGRADE, "websocket")
+                .header(HttpHeaders.CONNECTION, "Upgrade")
+                .header("Sec-WebSocket-Version", "13")
+                .header("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+                .header("Sec-WebSocket-Protocol", "ocpp2.0")
+                .exchange().expectStatus().isUnauthorized()
+                .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE,
+                        "Basic realm=\"TekWatt OCPP\", charset=\"UTF-8\"")
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,
+                        "https://evcharger-simulator.com");
     }
 
     @Test

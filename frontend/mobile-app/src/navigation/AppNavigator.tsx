@@ -13,13 +13,14 @@ import { ReservationsScreen } from '../screens/ReservationsScreen';
 import { InvoicesScreen } from '../screens/InvoicesScreen';
 import { RfidCardsScreen } from '../screens/RfidCardsScreen';
 import { SecurityScreen } from '../screens/SecurityScreen';
+import { PaymentInboxScreen } from '../screens/PaymentInboxScreen';
 
 export type RootStackParamList = { Main: undefined; Support: undefined; Reservations:undefined;Invoices:undefined;RfidCards:undefined;Security:undefined };
-export type MainTabsParamList = { Home: undefined; Stations: undefined; Charge: undefined; Wallet: undefined; More: undefined };
+export type MainTabsParamList = { Home: undefined; Stations: undefined; Charge: undefined; Wallet: undefined; Inbox: undefined; More: undefined };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabsParamList>();
-const symbols: Record<keyof MainTabsParamList, string> = { Home: '⌂', Stations: '⌁', Charge: '⚡', Wallet: '₹', More: '•••' };
+const symbols: Record<keyof MainTabsParamList, string> = { Home: '⌂', Stations: '⌁', Charge: '⚡', Wallet: '₹', Inbox: '✉', More: '•••' };
 
 function TabIcon({ route, focused }: { route: keyof MainTabsParamList; focused: boolean }) { return <View style={[styles.icon, focused && styles.iconActive]}><Text style={[styles.symbol, focused && styles.symbolActive]}>{symbols[route]}</Text></View>; }
 
@@ -29,6 +30,7 @@ function MainTabs() {
     <Tabs.Screen name="Stations" component={StationsScreen}/>
     <Tabs.Screen name="Charge" component={ChargingScreen}/>
     <Tabs.Screen name="Wallet" component={WalletScreen}/>
+    <Tabs.Screen name="Inbox" component={PaymentInboxScreen}/>
     <Tabs.Screen name="More" component={MoreScreen}/>
   </Tabs.Navigator>;
 }

@@ -5,7 +5,7 @@ param(
     [string]$ContainerAppName = "api-gateway",
     [string]$ApiGatewayUrl = "https://api-gateway.lemonmushroom-1166ae48.eastasia.azurecontainerapps.io",
     [string]$Maven = "C:\software\maven\apache-maven-3.9.16\bin\mvn.cmd",
-    [string]$ImageTag = ("ocpp-cors-{0}" -f (Get-Date -Format "yyyyMMddHHmmss"))
+    [string]$ImageTag = ("ocpp-auth-challenge-{0}" -f (Get-Date -Format "yyyyMMddHHmmss"))
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,7 +13,9 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $backendPom = Join-Path $repoRoot "backend\pom.xml"
 $targetDirectory = Join-Path $repoRoot "backend\api-gateway\target"
 $dockerfile = Join-Path $repoRoot "infrastructure\azure\backend.Dockerfile"
-$buildContext = Join-Path $env:TEMP ("tekwatt-api-gateway-{0}" -f $ImageTag)
+$tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+$buildContext = Join-Path $tempRoot ("tekwatt-api-gateway-{0}" -f [guid]::NewGuid().ToString('N'))
+$mavenRepository = Join-Path $repoRoot ".maven-repository"
 
 function Invoke-AzureCli {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
@@ -34,7 +36,7 @@ Write-Host "Checking the active Azure account..." -ForegroundColor Cyan
 Invoke-AzureCli account show --output none
 
 Write-Host "Building and testing the API Gateway..." -ForegroundColor Cyan
-& $Maven -f $backendPom -pl api-gateway -am package
+& $Maven -f $backendPom "-Dmaven.repo.local=$mavenRepository" -pl api-gateway -am package
 if ($LASTEXITCODE -ne 0) {
     throw "API Gateway build or tests failed."
 }
@@ -59,7 +61,7 @@ try {
     Write-Host "Updating the API Gateway Container App..." -ForegroundColor Cyan
     Invoke-AzureCli containerapp update --resource-group $ResourceGroup `
         --name $ContainerAppName --container-name $ContainerAppName `
-        --image $image --set-env-vars "OCPP_GATEWAY_WS_URL=ws://ocpp-gateway" --output none
+        --image $image --set-env-vars "OCPP_GATEWAY_WS_URL=ws://ocpp-gateway" "OCPP_REQUIRE_CREDENTIALS=true" --output none
 
     Write-Host "Waiting for the public gateway..." -ForegroundColor Cyan
     $healthy = $false
@@ -80,11 +82,20 @@ try {
         throw "The API Gateway did not report healthy after deployment."
     }
 
-    Write-Host "API Gateway OCPP simulator fix deployed successfully." -ForegroundColor Green
-    Write-Host "Return to evcharger-simulator.com and click Test connection."
+    Write-Host "Checking the OCPP password challenge without sending any credentials..." -ForegroundColor Cyan
+    & (Join-Path $PSScriptRoot 'test-ocpp-challenge.ps1') -ApiGatewayUrl $ApiGatewayUrl
+    Write-Host "API Gateway deployed; the public OCPP password challenge is verified." -ForegroundColor Green
+    Write-Host "Refresh evcharger-simulator.com, save the current Basic Auth password, and click Connect."
+    Write-Host "A successful authenticated simulator session still needs to be confirmed."
 }
 finally {
     if (Test-Path -LiteralPath $buildContext) {
-        Remove-Item -LiteralPath $buildContext -Recurse -Force
+        $resolvedContext = (Resolve-Path -LiteralPath $buildContext).Path
+        $expectedParent = $tempRoot.TrimEnd([char[]]'\/')
+        if ([System.IO.Path]::GetDirectoryName($resolvedContext) -ne $expectedParent -or
+            [System.IO.Path]::GetFileName($resolvedContext) -notmatch '^tekwatt-api-gateway-[a-f0-9]{32}$') {
+            throw 'Refusing to remove an unexpected build-context path.'
+        }
+        Remove-Item -LiteralPath $resolvedContext -Recurse -Force
     }
 }

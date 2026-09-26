@@ -17,6 +17,19 @@ class ChargingSessionRepositoryTest {
     @Autowired private ChargingSessionRepository sessions;
 
     @Test
+    void billingQueueIsDurableAndClaimsAreExclusive() {
+        var completed = session(UUID.randomUUID(), "BILLING-1");
+        completed.stop(BigDecimal.TEN, SessionStatus.COMPLETED);
+        sessions.saveAndFlush(completed);
+        var now = java.time.Instant.now().plusSeconds(1);
+        assertThat(sessions.pendingBilling(now, org.springframework.data.domain.PageRequest.of(0,20))).contains(completed.getId());
+        assertThat(sessions.claimBilling(completed.getId(), now, now.plusSeconds(120))).isEqualTo(1);
+        assertThat(sessions.claimBilling(completed.getId(), now, now.plusSeconds(120))).isZero();
+        sessions.completeBilling(completed.getId());
+        assertThat(sessions.pendingBilling(now.plusSeconds(121), org.springframework.data.domain.PageRequest.of(0,20))).isEmpty();
+    }
+
+    @Test
     void databaseRejectsTwoActiveSessionsForOneConnector() {
         UUID connectorId = UUID.randomUUID();
         sessions.saveAndFlush(session(connectorId, "TX-1"));

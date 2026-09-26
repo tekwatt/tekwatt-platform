@@ -43,12 +43,17 @@ public class ChargingSessionService {
         readings.save(new MeterReading(id, r.meterWh(), r.recordedAt() == null ? Instant.now() : r.recordedAt())); return map(s);
     }
     public SessionResponse stop(UUID id, StopSessionRequest r) {
-        ChargingSession s = active(id); SessionStatus finalStatus = r.status() == null ? SessionStatus.COMPLETED : r.status();
+        ChargingSession s = locked(id); SessionStatus finalStatus = r.status() == null ? SessionStatus.COMPLETED : r.status();
+        if (s.getStatus() != SessionStatus.ACTIVE) {
+            if (s.getStatus() == finalStatus && s.getMeterStopWh() != null && s.getMeterStopWh().compareTo(r.meterStopWh()) == 0) return map(s);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Session is already stopped with different final values");
+        }
         if (finalStatus == SessionStatus.ACTIVE) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Final status cannot be ACTIVE");
         try { s.stop(r.meterStopWh(), finalStatus); } catch (IllegalArgumentException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()); }
         readings.save(new MeterReading(id, r.meterStopWh(), Instant.now())); return map(s);
     }
-    private ChargingSession active(UUID id) { ChargingSession s = find(id); if (s.getStatus() != SessionStatus.ACTIVE) throw new ResponseStatusException(HttpStatus.CONFLICT, "Session is not active"); return s; }
+    private ChargingSession locked(UUID id) { return sessions.findForUpdate(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Charging session not found")); }
+    private ChargingSession active(UUID id) { ChargingSession s = locked(id); if (s.getStatus() != SessionStatus.ACTIVE) throw new ResponseStatusException(HttpStatus.CONFLICT, "Session is not active"); return s; }
     private ChargingSession find(UUID id) { return sessions.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Charging session not found")); }
     private SessionResponse map(ChargingSession s) { return new SessionResponse(s.getId(), s.getTenantId(), s.getUserId(), s.getChargerId(), s.getConnectorId(), s.getTariffId(), s.getTransactionId(), s.getStatus(), s.getMeterStartWh(), s.getMeterStopWh(), s.getEnergyKwh(), s.getPricePerKwh(), s.getTimePricePerMinute(), s.getSessionFee(), s.getTaxPercent(), s.getTotalCost(), s.getCurrency(), s.getStartedAt(), s.getStoppedAt(), s.getUpdatedAt()); }
 }

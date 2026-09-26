@@ -14,6 +14,14 @@ server:
 tekwatt:
   services:
     tariff: ${TARIFF_SERVICE_URL:http://localhost:8088}
+    billing: ${BILLING_SERVICE_URL:http://localhost:8090}
+    invoice: ${INVOICE_SERVICE_URL:http://localhost:8091}
+    user: ${USER_SERVICE_URL:http://localhost:8082}
+    notification: ${NOTIFICATION_SERVICE_URL:http://localhost:8093}
+  billing:
+    enabled: ${AUTO_SESSION_BILLING_ENABLED:true}
+    sms-enabled: ${PAYMENT_SMS_ENABLED:false}
+    portal-url: ${CUSTOMER_PORTAL_URL:}
 management:
   endpoint:
     health:

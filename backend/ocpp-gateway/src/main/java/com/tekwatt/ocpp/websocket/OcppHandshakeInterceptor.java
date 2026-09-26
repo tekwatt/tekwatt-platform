@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.ServerHttpRequest;
@@ -15,6 +17,7 @@ import org.springframework.web.util.UriTemplate;
 
 @Component
 public class OcppHandshakeInterceptor implements HandshakeInterceptor {
+    private static final Logger log = LoggerFactory.getLogger(OcppHandshakeInterceptor.class);
     private static final UriTemplate OCPP_PATH = new UriTemplate("/ocpp/{stationId}");
 
     private final String sharedKey;
@@ -32,16 +35,34 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
         if ((stationId == null || stationId.isBlank()) && basicCredentials != null) {
             stationId = basicCredentials.username();
         }
-        if (stationId == null || stationId.isBlank()) return false;
+        if (stationId == null || stationId.isBlank()) {
+            log.warn("Rejected OCPP WebSocket handshake from {}: station ID is missing", remoteAddress(request));
+            return false;
+        }
 
         if (!sharedKey.isBlank()
                 && !matches(request.getHeaders().getFirst("X-OCPP-Key"), sharedKey)
                 && !matchesBasicAuth(basicCredentials, stationId)) {
+            log.warn("Rejected OCPP WebSocket handshake for station {} from {}: credentials are invalid",
+                    stationId, remoteAddress(request));
             return false;
         }
 
         attributes.put("stationId", stationId);
+        log.info("Accepted OCPP WebSocket handshake for station {} from {}; origin={}; requestedProtocols={}",
+                stationId,
+                remoteAddress(request),
+                valueOrDash(request.getHeaders().getOrigin()),
+                valueOrDash(request.getHeaders().getFirst("Sec-WebSocket-Protocol")));
         return true;
+    }
+
+    private String remoteAddress(ServerHttpRequest request) {
+        return request.getRemoteAddress() == null ? "unknown" : request.getRemoteAddress().toString();
+    }
+
+    private String valueOrDash(String value) {
+        return value == null || value.isBlank() ? "-" : value;
     }
 
     private BasicCredentials basicCredentials(String authorization) {
@@ -50,7 +71,7 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
             String credentials = new String(
                     Base64.getDecoder().decode(authorization.substring(6).trim()), StandardCharsets.UTF_8);
             int separator = credentials.indexOf(':');
-            if (separator < 1) return null;
+            if (separator < 0) return null;
             return new BasicCredentials(
                     credentials.substring(0, separator), credentials.substring(separator + 1));
         } catch (IllegalArgumentException exception) {
@@ -60,7 +81,7 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
 
     private boolean matchesBasicAuth(BasicCredentials credentials, String stationId) {
         return credentials != null
-                && stationId.equals(credentials.username())
+                && (credentials.username().isBlank() || stationId.equals(credentials.username()))
                 && matches(credentials.password(), sharedKey);
     }
 

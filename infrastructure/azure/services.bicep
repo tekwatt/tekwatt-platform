@@ -126,9 +126,12 @@ var services = [
     databaseName: 'tekwatt_charging_sessions'
     databaseEnvName: 'DATABASE_URL'
     external: false
-    alwaysOn: false
+    alwaysOn: true
     additionalEnvironment: [
       { name: 'TARIFF_SERVICE_URL', value: 'http://tariff-service' }
+      { name: 'BILLING_SERVICE_URL', value: 'http://billing-service' }
+      { name: 'INVOICE_SERVICE_URL', value: 'http://invoice-service' }
+      { name: 'USER_SERVICE_URL', value: 'http://user-service' }
     ]
   }
   {

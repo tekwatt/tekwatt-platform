@@ -28,6 +28,8 @@ public class ChargingSession {
     @Column(nullable = false, length = 3) private String currency;
     @Column(nullable = false) private Instant startedAt;
     private Instant stoppedAt;
+    @Column(nullable = false) private boolean billingPending;
+    private Instant billingRetryAt;
     @Column(nullable = false) private Instant updatedAt;
 
     protected ChargingSession() {}
@@ -50,7 +52,7 @@ public class ChargingSession {
         BigDecimal subtotal = energyKwh.multiply(pricePerKwh).add(timePricePerMinute.multiply(BigDecimal.valueOf(minutes))).add(sessionFee);
         totalCost = subtotal.add(subtotal.multiply(taxPercent).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP)).setScale(2, RoundingMode.HALF_UP);
     }
-    public void stop(BigDecimal meterWh, SessionStatus finalStatus) { applyMeterValue(meterWh); this.status = finalStatus; this.activeConnectorId = null; this.stoppedAt = Instant.now(); this.updatedAt = stoppedAt; calculateTotal(stoppedAt); }
+    public void stop(BigDecimal meterWh, SessionStatus finalStatus) { applyMeterValue(meterWh); this.status = finalStatus; this.activeConnectorId = null; this.stoppedAt = Instant.now(); this.updatedAt = stoppedAt; calculateTotal(stoppedAt); this.billingPending = finalStatus == SessionStatus.COMPLETED; this.billingRetryAt = stoppedAt; }
     public UUID getId() { return id; } public UUID getTenantId() { return tenantId; } public UUID getUserId() { return userId; }
     public UUID getChargerId() { return chargerId; } public UUID getConnectorId() { return connectorId; } public String getTransactionId() { return transactionId; }
     public SessionStatus getStatus() { return status; } public BigDecimal getMeterStartWh() { return meterStartWh; } public BigDecimal getMeterStopWh() { return meterStopWh; }

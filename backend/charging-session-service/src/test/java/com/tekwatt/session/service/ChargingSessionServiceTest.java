@@ -45,6 +45,18 @@ class ChargingSessionServiceTest {
     }
 
     @Test
+    void identicalStopIsIdempotentButChangedReadingIsRejected() {
+        var s = new ChargingSession(request.tenantId(),request.userId(),request.chargerId(),request.connectorId(),UUID.randomUUID(),"STOP-1",BigDecimal.ZERO,BigDecimal.TEN,BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO,"INR");
+        when(sessions.findForUpdate(s.getId())).thenReturn(java.util.Optional.of(s));
+        var stop = new com.tekwatt.session.dto.StopSessionRequest(new BigDecimal("1000"),SessionStatus.COMPLETED);
+        var first = service.stop(s.getId(),stop);
+        var second = service.stop(s.getId(),stop);
+        assertThat(second.stoppedAt()).isEqualTo(first.stoppedAt());
+        verify(readings,org.mockito.Mockito.times(1)).save(any());
+        assertThrows(ResponseStatusException.class,()->service.stop(s.getId(),new com.tekwatt.session.dto.StopSessionRequest(new BigDecimal("2000"),SessionStatus.COMPLETED)));
+    }
+
+    @Test
     void rejectsKnownDuplicateTransactionBeforeResolvingTariff() {
         when(sessions.existsByTransactionId(request.transactionId())).thenReturn(true);
 

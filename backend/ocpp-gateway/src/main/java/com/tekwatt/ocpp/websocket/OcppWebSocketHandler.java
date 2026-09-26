@@ -12,6 +12,8 @@ import com.tekwatt.ocpp.service.OcppCommandTracker;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.SubProtocolCapable;
@@ -21,6 +23,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 @Component
 public class OcppWebSocketHandler extends TextWebSocketHandler implements SubProtocolCapable {
+    private static final Logger log = LoggerFactory.getLogger(OcppWebSocketHandler.class);
+
     private final ObjectMapper json;
     private final ConnectionRegistry registry;
     private final OcppAuditService audit;
@@ -38,10 +42,17 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
         this.commands = commands;
     }
 
-    @Override public List<String> getSubProtocols() { return List.of("ocpp2.0.1", "ocpp1.6"); }
+    @Override public List<String> getSubProtocols() {
+        // Some OCPP 2.0.1 simulators still advertise the early "ocpp2.0" token.
+        // Accept it as a wire-level alias while exposing 2.0.1 throughout TekWatt.
+        return List.of("ocpp2.0.1", "ocpp2.0", "ocpp1.6");
+    }
 
     @Override public void afterConnectionEstablished(WebSocketSession session) {
-        registry.add(station(session), session);
+        String stationId = station(session);
+        registry.add(stationId, session);
+        log.info("OCPP WebSocket connected: station={}, protocol={}, remote={}, session={}",
+                stationId, protocol(session), remoteAddress(session), session.getId());
     }
 
     @Override protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
@@ -81,7 +92,7 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
     }
 
     private ObjectNode handle(String stationId, String protocol, String action, JsonNode payload) {
-        boolean v201 = "ocpp2.0.1".equals(protocol);
+        boolean v201 = "ocpp2.0.1".equals(protocol) || "ocpp2.0".equals(protocol);
         ObjectNode response = json.createObjectNode();
         switch (action) {
             case "BootNotification" -> {
@@ -141,7 +152,26 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
     }
 
     @Override public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        registry.remove(station(session), session);
+        String stationId = station(session);
+        registry.remove(stationId, session);
+        log.info("OCPP WebSocket disconnected: station={}, protocol={}, remote={}, session={}, code={}, reason={}",
+                stationId, protocol(session), remoteAddress(session), session.getId(),
+                status.getCode(), status.getReason() == null || status.getReason().isBlank() ? "-" : status.getReason());
+    }
+
+    @Override public void handleTransportError(WebSocketSession session, Throwable exception) {
+        log.warn("OCPP WebSocket transport error: station={}, protocol={}, remote={}, session={}, error={}",
+                station(session), protocol(session), remoteAddress(session), session.getId(),
+                exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage(), exception);
+    }
+
+    private String protocol(WebSocketSession session) {
+        String value = session.getAcceptedProtocol();
+        return value == null || value.isBlank() ? "none" : value;
+    }
+
+    private String remoteAddress(WebSocketSession session) {
+        return session.getRemoteAddress() == null ? "unknown" : session.getRemoteAddress().toString();
     }
 
     private String station(WebSocketSession session) { return (String) session.getAttributes().get("stationId"); }

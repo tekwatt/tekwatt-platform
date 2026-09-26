@@ -647,6 +647,7 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
   useEffect(() => subscribeApiMutations(setPendingMutations), []);
   const activeDataKeys=useMemo(()=>{
     const keys=new Set<string>(['users','roles','modules']);
+    if(identity.role==='CUSTOMER')keys.add('invoices');
     const add=(...items:string[])=>items.forEach(item=>keys.add(item));
     if(page==='Dashboard')add('chargers','sessions','payments','notifications');
     else if(page==='Stations')add('chargers','partners','tariffs','tariffAssignments');
@@ -661,7 +662,7 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
     else if(page==='Network Partners')add('ocpiConfiguration','ocpiPartners','ocpiSummary');
     else if(page==='Settings')add('governanceSettings','notifications','users','partners','chargers','tariffs','tariffAssignments','messages');
     return [...keys].sort().join(',');
-  },[page,stationView,sessionView,reportView,paymentView,userView,managerView,contentView,supportView,adminView,settingsView]);
+  },[page,stationView,sessionView,reportView,paymentView,userView,managerView,contentView,supportView,adminView,settingsView,identity.role]);
   const refresh = async (silent = false, requestedTenantId = selectedTenantId) => {
     if (demo) return;
     if (!silent) setLoading(true);
@@ -707,7 +708,18 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
   const navigateTo=(target:Page,view?:string)=>{const destination=resolveNavigationTarget({page:target,view},enabledPermissions);applyNavigation(destination);const hash=navigationHash(destination);if(window.location.hash!==hash)window.history.pushState(null,'',hash);};
   useEffect(()=>{const synchronize=()=>{const requested=parseNavigationHash(window.location.hash)??{page:'Dashboard' as Page};const destination=resolveNavigationTarget(requested,enabledPermissions);applyNavigation(destination);const hash=navigationHash(destination);if(window.location.hash!==hash||!targetsEqual(requested,destination))window.history.replaceState(null,'',hash);};window.addEventListener('popstate',synchronize);window.addEventListener('hashchange',synchronize);synchronize();return()=>{window.removeEventListener('popstate',synchronize);window.removeEventListener('hashchange',synchronize);};},[enabledPermissions]);
   const activeView=page==='Stations'?stationView:page==='Sessions'?sessionView:page==='Payments'?paymentView:page==='Users'?userView:page==='Managers'?managerView:page==='Content'?contentView:page==='Reports'?reportView:page==='Support'?supportView:page==='Admins'?adminView:page==='Settings'?settingsView:page;
-  const body = useMemo(() => {
+  // Keep the customer payment request visible even while viewing charging activity.
+  useEffect(()=>{
+    if(demo||identity.role!=='CUSTOMER'||!selectedTenantId)return;
+    let disposed=false;
+    const timer=window.setInterval(()=>{
+      void api.invoices(selectedTenantId).then(invoices=>{
+        if(!disposed)setData(current=>current.tenant?.id===selectedTenantId?{...current,invoices}:current);
+      }).catch(()=>{}); // Main refresh retains the normal service-error display.
+    },10000);
+    return()=>{disposed=true;window.clearInterval(timer);};
+  },[demo,identity.role,selectedTenantId]);
+  const pageBody = useMemo(() => {
     if (page === 'Dashboard') return <Dashboard navigate={navigateTo} data={data} demo={demo} identity={identity} canManageStations={identity.role!=='CUSTOMER'&&enabledPermissions.has('Stations')} onAddStation={() => {setEditingStation(undefined);setShowAddStation(true);}} />;
     if (page === 'Stations') return <><Subnav items={allowedScreens('Stations')} active={stationView} select={view=>navigateTo('Stations',view)}/>{stationView === 'Connectors' ? <ConnectorsPage data={data} refresh={refresh}/> : stationView === 'Configuration' ? <ChargerConfigurationPage data={data} refresh={refresh}/> : stationView === 'Map View' ? <MapViewPage data={data}/> : stationView === 'Tariff Management' ? <TariffManagementPage data={data} refresh={refresh}/> : stationView==='Chargers'?<><div className="page-title split"><div><span className="eyebrow">HARDWARE</span><h1>Chargers</h1><p>Manage charge-point identity, electrical capacity, firmware and connectors.</p></div>{identity.role!=='CUSTOMER'&&<button className="primary" onClick={()=>setShowAddCharger(true)}><Plus size={18}/> Add charger</button>}</div><ChargerTable data={data}/></>:<><div className="page-title split"><div><span className="eyebrow">INFRASTRUCTURE</span><h1>Charging stations</h1><p>Manage locations, availability, pricing and station contacts.</p></div>{identity.role!=='CUSTOMER'&&<button className="primary" onClick={()=>{setEditingStation(undefined);setShowAddStation(true);}}><Plus size={18}/> Add station</button>}</div>{demo?<StationCard items={stationRows}/>:<StationDetailsTable data={data} canEdit={identity.role!=='CUSTOMER'} onEdit={station=>{setEditingStation(station);setShowAddStation(true);}}/>}</>}</>;
     if (page === 'Sessions') return <><Subnav items={allowedScreens('Sessions')} active={sessionView} select={view=>navigateTo('Sessions',view)}/>{sessionView === 'Live Monitoring' ? <LiveMonitoringPage data={data}/> : sessionView === 'Remote Control' ? <RemoteControlPage data={data}/> : <SessionManagementPage data={data} refresh={refresh} navigate={navigateTo} readOnly={identity.role==='CUSTOMER'}/>}</>;
@@ -723,6 +735,8 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
     return <><Subnav items={allowedScreens('Settings')} active={settingsView} select={view=>navigateTo('Settings',view)}/>{settingsView==='Pricing Configuration'?<TariffManagementPage data={data} refresh={refresh}/>:settingsView==='Email & Newsletter'?<EmailNewsletterPage data={data} refresh={refresh}/>:settingsView==='OCPP Schemas'?<OcppSchemasPage data={data} refresh={refresh}/>:settingsView==='Account Settings'?<SettingsPage data={data} refresh={refresh}/>:<GeneralSettingsPage data={data} refresh={refresh}/>}</>;
   }, [page, data, demo, identity, permissions, enabledPermissions, stationView, sessionView, reportView, paymentView, userView, managerView, contentView, supportView, adminView, settingsView]);
   const availableWorkspaces=demo?[{id:'demo',name:'TekWatt Demo',slug:'tekwatt-demo',contactEmail:'demo@tekwatt.in',status:'ACTIVE'} as Tenant]:tenants;
+  const unpaidInvoices=data.invoices.filter(invoice=>['ISSUED','OVERDUE'].includes(invoice.status)&&Number(invoice.totalAmount)>0);
+  const body=<>{identity.role==='CUSTOMER'&&enabledPermissions.has('Invoices')&&unpaidInvoices.length>0&&<div className="mode-banner" role="status" aria-live="polite"><span>Payment due: {unpaidInvoices.length} unpaid invoice{unpaidInvoices.length===1?'':'s'}. Your charging bill is ready.</span><button onClick={()=>navigateTo('Payments','Invoices')}>View &amp; pay</button></div>}{pageBody}</>;
   return <div className={`app ${dark ? 'dark' : ''} ${pendingMutations ? 'api-mutating' : ''}`} aria-busy={pendingMutations > 0}>{pendingMutations>0&&<div className="global-action-loader" role="status" aria-live="polite"><span className="button-spinner" aria-hidden="true"/>Saving changes…</div>}<Sidebar page={page} activeView={activeView} navigate={navigateTo} open={menu} close={() => setMenu(false)} chargerCount={demo ? 5 : uniqueStationRecords(data.chargers).length} permissions={enabledPermissions} tenants={availableWorkspaces} selectedTenantId={demo?'demo':selectedTenantId} selectTenant={id=>{if(!demo)void selectWorkspace(id)}} manageWorkspaces={!demo&&identity.role==='ADMIN'?()=>setShowWorkspaces(true):undefined} health={demo?'offline':loadError?'degraded':realtime==='live'?'operational':realtime==='offline'?'offline':'checking'}/>{menu && <div className="scrim" onClick={() => setMenu(false)} />}<div className="shell"><Header page={page} dark={dark} toggleDark={() => setDark(!dark)} openMenu={() => setMenu(true)} logout={logout} navigate={navigateTo} realtime={realtime} identity={identity} permissions={enabledPermissions}/><main className="content">{demo && <div className="mode-banner">Demo data mode <button onClick={logout}>Connect backend</button></div>}{loading && <div className="loading-bar">Refreshing this section from the API Gateway…</div>}{loadError && <div className="api-error"><span>{loadError}</span><button onClick={() => refresh()}>Retry</button></div>}{body}</main></div>{showAddStation&&identity.role!=='CUSTOMER'&&<AddStationModal data={data} editing={editingStation} close={()=>{setShowAddStation(false);setEditingStation(undefined);}} saved={stationSaved}/>} {showAddCharger&&identity.role!=='CUSTOMER'&&<AddChargerModal data={data} close={()=>setShowAddCharger(false)} saved={()=>refresh()}/>} {showWorkspaces&&identity.role==='ADMIN'&&<WorkspaceModal tenants={tenants} currentId={selectedTenantId} close={()=>setShowWorkspaces(false)} saved={workspaceSaved}/>}</div>;
 }
 
