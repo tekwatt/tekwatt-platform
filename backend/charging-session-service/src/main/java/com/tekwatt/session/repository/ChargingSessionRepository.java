@@ -6,6 +6,7 @@ import java.util.*;
 
 public interface ChargingSessionRepository extends JpaRepository<ChargingSession, UUID> {
     boolean existsByTransactionId(String transactionId);
+    boolean existsByConnectorIdAndStatus(UUID connectorId, SessionStatus status);
     Optional<ChargingSession> findByTransactionId(String transactionId);
     List<ChargingSession> findAllByTenantIdOrderByStartedAtDesc(UUID tenantId);
 }

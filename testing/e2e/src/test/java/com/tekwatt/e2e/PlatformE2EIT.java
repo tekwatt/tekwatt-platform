@@ -52,10 +52,30 @@ class PlatformE2EIT {
 
     verifyOcpp201(stationId);
 
+    Response unassignedTariff = post(api, "/api/v1/charging-sessions", Map.of(
+        "tenantId", tenantId, "userId", userId, "chargerId", chargerId, "connectorId", connectorId,
+        "transactionId", "TX-UNASSIGNED-" + run, "meterStartWh", 1000), 409);
+    assertThat(unassignedTariff.jsonPath().getString("detail")).containsIgnoringCase("tariff");
+
+    UUID tariffId = id(post(api, "/api/v1/tariffs", Map.of(
+        "tenantId", tenantId, "code", "E2E-" + run, "name", "E2E charging tariff",
+        "energyPricePerKwh", 10, "timePricePerMinute", 1, "sessionFee", 2,
+        "taxPercent", 18, "currency", "INR",
+        "validFrom", Instant.now().minus(Duration.ofMinutes(1)).toString()), 201));
+    Response activatedTariff = patch(api, "/api/v1/tariffs/" + tariffId + "/status",
+        Map.of("status", "ACTIVE"), 200);
+    assertThat(activatedTariff.jsonPath().getString("status")).isEqualTo("ACTIVE");
+    Response assignment = post(api, "/api/v1/tariffs/" + tariffId + "/assignments", Map.of(
+        "tenantId", tenantId, "chargerId", chargerId), 200);
+    assertThat(assignment.jsonPath().getString("tariffId")).isEqualTo(tariffId.toString());
+    assertThat(assignment.jsonPath().getString("chargerId")).isEqualTo(chargerId.toString());
+
     String transactionId = "TX-" + run;
     Response started = post(api, "/api/v1/charging-sessions", Map.of(
         "tenantId", tenantId, "userId", userId, "chargerId", chargerId, "connectorId", connectorId,
-        "transactionId", transactionId, "meterStartWh", 1000, "pricePerKwh", 10, "currency", "INR"), 201);
+        "transactionId", transactionId, "meterStartWh", 1000), 201);
+    assertThat(started.jsonPath().getString("tariffId")).isEqualTo(tariffId.toString());
+    assertThat(started.jsonPath().getString("currency")).isEqualTo("INR");
     UUID sessionId = id(started);
     post(api, "/api/v1/charging-sessions/" + sessionId + "/meter-values", Map.of(
         "meterWh", 2500, "recordedAt", Instant.now().toString()), 200);
@@ -112,6 +132,10 @@ class PlatformE2EIT {
 
   private Response post(RequestSpecification specification, String path, Object body, int status) {
     return specification.body(body).post(baseUrl + path).then().statusCode(status).extract().response();
+  }
+
+  private Response patch(RequestSpecification specification, String path, Object body, int status) {
+    return specification.body(body).patch(baseUrl + path).then().statusCode(status).extract().response();
   }
 
   private UUID id(Response response) {

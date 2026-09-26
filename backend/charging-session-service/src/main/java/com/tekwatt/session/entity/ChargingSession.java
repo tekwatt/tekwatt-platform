@@ -13,6 +13,7 @@ public class ChargingSession {
     @Column(nullable = false) private UUID userId;
     @Column(nullable = false) private UUID chargerId;
     @Column(nullable = false) private UUID connectorId;
+    @Column(unique = true) private UUID activeConnectorId;
     private UUID tariffId;
     @Column(nullable = false, unique = true, length = 100) private String transactionId;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) private SessionStatus status;
@@ -31,7 +32,7 @@ public class ChargingSession {
 
     protected ChargingSession() {}
     public ChargingSession(UUID tenantId, UUID userId, UUID chargerId, UUID connectorId, UUID tariffId, String transactionId, BigDecimal meterStartWh, BigDecimal pricePerKwh, BigDecimal timePricePerMinute, BigDecimal sessionFee, BigDecimal taxPercent, String currency) {
-        this.id = UUID.randomUUID(); this.tenantId = tenantId; this.userId = userId; this.chargerId = chargerId; this.connectorId = connectorId;
+        this.id = UUID.randomUUID(); this.tenantId = tenantId; this.userId = userId; this.chargerId = chargerId; this.connectorId = connectorId; this.activeConnectorId = connectorId;
         this.tariffId = tariffId;
         this.transactionId = transactionId; this.status = SessionStatus.ACTIVE; this.meterStartWh = meterStartWh;
         this.energyKwh = BigDecimal.ZERO.setScale(3); this.pricePerKwh = pricePerKwh; this.timePricePerMinute = timePricePerMinute; this.sessionFee = sessionFee; this.taxPercent = taxPercent; this.totalCost = BigDecimal.ZERO.setScale(2);
@@ -49,7 +50,7 @@ public class ChargingSession {
         BigDecimal subtotal = energyKwh.multiply(pricePerKwh).add(timePricePerMinute.multiply(BigDecimal.valueOf(minutes))).add(sessionFee);
         totalCost = subtotal.add(subtotal.multiply(taxPercent).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP)).setScale(2, RoundingMode.HALF_UP);
     }
-    public void stop(BigDecimal meterWh, SessionStatus finalStatus) { applyMeterValue(meterWh); this.status = finalStatus; this.stoppedAt = Instant.now(); this.updatedAt = stoppedAt; calculateTotal(stoppedAt); }
+    public void stop(BigDecimal meterWh, SessionStatus finalStatus) { applyMeterValue(meterWh); this.status = finalStatus; this.activeConnectorId = null; this.stoppedAt = Instant.now(); this.updatedAt = stoppedAt; calculateTotal(stoppedAt); }
     public UUID getId() { return id; } public UUID getTenantId() { return tenantId; } public UUID getUserId() { return userId; }
     public UUID getChargerId() { return chargerId; } public UUID getConnectorId() { return connectorId; } public String getTransactionId() { return transactionId; }
     public SessionStatus getStatus() { return status; } public BigDecimal getMeterStartWh() { return meterStartWh; } public BigDecimal getMeterStopWh() { return meterStopWh; }

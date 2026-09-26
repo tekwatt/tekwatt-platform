@@ -4,6 +4,7 @@ import com.tekwatt.session.dto.*;
 import com.tekwatt.session.client.TariffClient;
 import com.tekwatt.session.entity.*;
 import com.tekwatt.session.repository.*;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,8 +19,21 @@ public class ChargingSessionService {
     public ChargingSessionService(ChargingSessionRepository sessions, MeterReadingRepository readings, TariffClient tariffs) { this.sessions = sessions; this.readings = readings; this.tariffs = tariffs; }
     public SessionResponse start(StartSessionRequest r) {
         if (sessions.existsByTransactionId(r.transactionId())) throw new ResponseStatusException(HttpStatus.CONFLICT, "Transaction ID already exists");
+        if (sessions.existsByConnectorIdAndStatus(r.connectorId(), SessionStatus.ACTIVE)) throw new ResponseStatusException(HttpStatus.CONFLICT, "Connector already has an active session");
         TariffClient.ResolvedTariff tariff = tariffs.resolve(r.tenantId(), r.chargerId());
-        return map(sessions.save(new ChargingSession(r.tenantId(), r.userId(), r.chargerId(), r.connectorId(), tariff.id(), r.transactionId(), r.meterStartWh(), tariff.energyPricePerKwh(), tariff.timePricePerMinute(), tariff.sessionFee(), tariff.taxPercent(), tariff.currency())));
+        ChargingSession session = new ChargingSession(r.tenantId(), r.userId(), r.chargerId(), r.connectorId(), tariff.id(), r.transactionId(), r.meterStartWh(), tariff.energyPricePerKwh(), tariff.timePricePerMinute(), tariff.sessionFee(), tariff.taxPercent(), tariff.currency());
+        try {
+            return map(sessions.saveAndFlush(session));
+        } catch (DataIntegrityViolationException exception) {
+            String detail = Optional.ofNullable(exception.getMostSpecificCause().getMessage()).orElse("").toLowerCase(Locale.ROOT);
+            if (detail.contains("uk_charging_sessions_active_connector") || detail.contains("active_connector_id")) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Connector already has an active session", exception);
+            }
+            if (detail.contains("transaction_id")) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Transaction ID already exists", exception);
+            }
+            throw exception;
+        }
     }
     @Transactional(readOnly = true) public SessionResponse get(UUID id) { return map(find(id)); }
     @Transactional(readOnly = true) public SessionResponse getByTransactionId(String transactionId) { return map(sessions.findByTransactionId(transactionId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Charging session not found"))); }
