@@ -78,7 +78,7 @@ var services = [
       { name: 'PAYMENT_SERVICE_URL', value: 'http://payment-service' }
       { name: 'NOTIFICATION_SERVICE_URL', value: 'http://notification-service' }
       { name: 'OCPP_GATEWAY_URL', value: 'https://ocpp-gateway.internal.${containerEnvironmentDefaultDomain}' }
-      { name: 'OCPP_GATEWAY_WS_URL', value: 'wss://ocpp-gateway.internal.${containerEnvironmentDefaultDomain}' }
+      { name: 'OCPP_GATEWAY_WS_URL', value: 'ws://ocpp-gateway' }
       { name: 'TELEMETRY_SERVICE_URL', value: 'http://telemetry-service' }
       { name: 'FIRMWARE_SERVICE_URL', value: 'http://firmware-service' }
       { name: 'AUDIT_SERVICE_URL', value: 'http://audit-service' }

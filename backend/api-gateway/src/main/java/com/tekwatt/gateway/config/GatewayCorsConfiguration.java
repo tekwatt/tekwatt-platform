@@ -6,9 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
@@ -17,6 +15,14 @@ public class GatewayCorsConfiguration {
 
     @Bean
     CorsWebFilter corsWebFilter(@Value("${tekwatt.gateway.cors.allowed-origins}") List<String> allowedOrigins) {
+        CorsConfiguration ocppWebSocketConfiguration = new CorsConfiguration();
+        ocppWebSocketConfiguration.setAllowedOrigins(List.of("https://evcharger-simulator.com"));
+        ocppWebSocketConfiguration.setAllowedMethods(List.of(
+                HttpMethod.GET.name(), HttpMethod.OPTIONS.name()));
+        ocppWebSocketConfiguration.setAllowedHeaders(List.of("*"));
+        ocppWebSocketConfiguration.setAllowCredentials(true);
+        ocppWebSocketConfiguration.setMaxAge(3600L);
+
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of(
@@ -28,8 +34,12 @@ public class GatewayCorsConfiguration {
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        // Keep the REST APIs restricted to the configured frontend while allowing the
+        // approved browser-based OCPP simulator to perform its WebSocket handshake.
+        CorsConfigurationSource source = exchange -> {
+            String path = exchange.getRequest().getPath().pathWithinApplication().value();
+            return path.startsWith("/ocpp/") ? ocppWebSocketConfiguration : configuration;
+        };
         return new CorsWebFilter(source);
     }
 }
