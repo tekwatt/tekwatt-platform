@@ -2,6 +2,7 @@ package com.tekwatt.session.client;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -13,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Component
 public class TariffClient {
     private final RestClient client;
+    @Autowired
     public TariffClient(RestClient.Builder builder, @Value("${tekwatt.services.tariff:http://localhost:8088}") String baseUrl) { SimpleClientHttpRequestFactory requests=new SimpleClientHttpRequestFactory();requests.setConnectTimeout(2000);requests.setReadTimeout(3000);client = builder.baseUrl(baseUrl).requestFactory(requests).build(); }
     TariffClient(RestClient client) { this.client = client; }
     public ResolvedTariff resolve(UUID tenantId, UUID chargerId) {
