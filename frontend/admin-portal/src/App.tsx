@@ -708,7 +708,7 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
     if(identity.role==='CUSTOMER')keys.add('invoices');
     const add=(...items:string[])=>items.forEach(item=>keys.add(item));
     if(page==='Dashboard')add('chargers','sessions','payments','notifications','invoices','bills');
-    else if(page==='Stations')add('chargers','partners','tariffs','tariffAssignments');
+    else if(page==='Stations')add('chargers','partners','tariffs','tariffAssignments','governanceSettings');
     else if(page==='Sessions')add('chargers','sessions','connections','messages','tariffs','tariffAssignments');
     else if(page==='Payments')add('chargers','sessions','payments','bills','invoices','paymentGateways','wallets','scanPayOrders');
     else if(page==='Users')add('partners','technicians','rfidCards');

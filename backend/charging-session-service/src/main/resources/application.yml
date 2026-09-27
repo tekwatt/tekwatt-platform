@@ -17,7 +17,11 @@ tekwatt:
     billing: ${BILLING_SERVICE_URL:http://localhost:8090}
     invoice: ${INVOICE_SERVICE_URL:http://localhost:8091}
     user: ${USER_SERVICE_URL:http://localhost:8082}
+    charger: ${CHARGER_SERVICE_URL:http://localhost:8083}
     notification: ${NOTIFICATION_SERVICE_URL:http://localhost:8093}
+  charging-sms:
+    enabled: ${CHARGING_SMS_ENABLED:true}
+    poll-ms: ${CHARGING_SMS_POLL_MS:5000}
   billing:
     enabled: ${AUTO_SESSION_BILLING_ENABLED:true}
     sms-enabled: ${PAYMENT_SMS_ENABLED:false}

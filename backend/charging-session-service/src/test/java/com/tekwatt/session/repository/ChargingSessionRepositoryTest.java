@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tekwatt.session.entity.ChargingSession;
 import com.tekwatt.session.entity.SessionStatus;
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 @DataJpaTest
 class ChargingSessionRepositoryTest {
     @Autowired private ChargingSessionRepository sessions;
+    @Autowired private EntityManager entityManager;
 
     @Test
     void billingQueueIsDurableAndClaimsAreExclusive() {
@@ -27,6 +29,28 @@ class ChargingSessionRepositoryTest {
         assertThat(sessions.claimBilling(completed.getId(), now, now.plusSeconds(120))).isZero();
         sessions.completeBilling(completed.getId());
         assertThat(sessions.pendingBilling(now.plusSeconds(121), org.springframework.data.domain.PageRequest.of(0,20))).isEmpty();
+    }
+
+    @Test
+    void chargingSmsQueuesAreDurableAndIdempotentlyClaimed() {
+        var charging = session(UUID.randomUUID(), "SMS-1");
+        sessions.saveAndFlush(charging);
+        var now = java.time.Instant.now().plusSeconds(1);
+        var page = org.springframework.data.domain.PageRequest.of(0, 20);
+        assertThat(sessions.pendingStartedSms(now, page)).contains(charging.getId());
+        assertThat(sessions.pendingStoppedSms(now, page)).isEmpty();
+        assertThat(sessions.claimStartedSms(charging.getId(), now, now.plusSeconds(300))).isEqualTo(1);
+        assertThat(sessions.claimStartedSms(charging.getId(), now, now.plusSeconds(300))).isZero();
+        sessions.completeStartedSms(charging.getId());
+        entityManager.clear();
+        charging = sessions.findById(charging.getId()).orElseThrow();
+        charging.stop(BigDecimal.TEN, SessionStatus.COMPLETED);
+        sessions.saveAndFlush(charging);
+        assertThat(sessions.pendingStartedSms(now.plusSeconds(301), page)).isEmpty();
+        assertThat(sessions.pendingStoppedSms(now.plusSeconds(301), page)).contains(charging.getId());
+        assertThat(sessions.claimStoppedSms(charging.getId(), now.plusSeconds(301), now.plusSeconds(601))).isEqualTo(1);
+        sessions.completeStoppedSms(charging.getId());
+        assertThat(sessions.pendingStoppedSms(now.plusSeconds(602), page)).isEmpty();
     }
 
     @Test

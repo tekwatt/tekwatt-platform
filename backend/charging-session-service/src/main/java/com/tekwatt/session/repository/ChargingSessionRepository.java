@@ -21,6 +21,22 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
     @Transactional @Modifying
     @Query("update ChargingSession s set s.billingPending = false where s.id = :id")
     void completeBilling(UUID id);
+    @Query("select s.id from ChargingSession s where s.startedSmsPending = true and s.startedSmsRetryAt <= :now order by s.startedSmsRetryAt")
+    List<UUID> pendingStartedSms(Instant now, Pageable page);
+    @Transactional @Modifying
+    @Query("update ChargingSession s set s.startedSmsRetryAt = :leaseUntil where s.id = :id and s.startedSmsPending = true and s.startedSmsRetryAt <= :now")
+    int claimStartedSms(UUID id, Instant now, Instant leaseUntil);
+    @Transactional @Modifying
+    @Query("update ChargingSession s set s.startedSmsPending = false where s.id = :id")
+    void completeStartedSms(UUID id);
+    @Query("select s.id from ChargingSession s where s.stoppedSmsPending = true and s.stoppedSmsRetryAt <= :now order by s.stoppedSmsRetryAt")
+    List<UUID> pendingStoppedSms(Instant now, Pageable page);
+    @Transactional @Modifying
+    @Query("update ChargingSession s set s.stoppedSmsRetryAt = :leaseUntil where s.id = :id and s.stoppedSmsPending = true and s.stoppedSmsRetryAt <= :now")
+    int claimStoppedSms(UUID id, Instant now, Instant leaseUntil);
+    @Transactional @Modifying
+    @Query("update ChargingSession s set s.stoppedSmsPending = false where s.id = :id")
+    void completeStoppedSms(UUID id);
     boolean existsByTransactionId(String transactionId);
     boolean existsByConnectorIdAndStatus(UUID connectorId, SessionStatus status);
     Optional<ChargingSession> findByTransactionId(String transactionId);

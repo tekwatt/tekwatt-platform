@@ -30,6 +30,10 @@ public class ChargingSession {
     private Instant stoppedAt;
     @Column(nullable = false) private boolean billingPending;
     private Instant billingRetryAt;
+    @Column(nullable = false) private boolean startedSmsPending;
+    private Instant startedSmsRetryAt;
+    @Column(nullable = false) private boolean stoppedSmsPending;
+    private Instant stoppedSmsRetryAt;
     @Column(nullable = false) private Instant updatedAt;
 
     protected ChargingSession() {}
@@ -39,6 +43,7 @@ public class ChargingSession {
         this.transactionId = transactionId; this.status = SessionStatus.ACTIVE; this.meterStartWh = meterStartWh;
         this.energyKwh = BigDecimal.ZERO.setScale(3); this.pricePerKwh = pricePerKwh; this.timePricePerMinute = timePricePerMinute; this.sessionFee = sessionFee; this.taxPercent = taxPercent; this.totalCost = BigDecimal.ZERO.setScale(2);
         this.currency = currency.toUpperCase(); this.startedAt = Instant.now(); this.updatedAt = this.startedAt;
+        this.startedSmsPending = true; this.startedSmsRetryAt = this.startedAt;
     }
     public void applyMeterValue(BigDecimal meterWh) {
         if (meterStopWh != null && meterWh.compareTo(meterStopWh) < 0) throw new IllegalArgumentException("Meter value cannot decrease below the last reading");
@@ -53,7 +58,7 @@ public class ChargingSession {
         BigDecimal subtotal = energyKwh.multiply(pricePerKwh).add(timePricePerMinute.multiply(BigDecimal.valueOf(minutes))).add(sessionFee);
         totalCost = subtotal.add(subtotal.multiply(taxPercent).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP)).setScale(2, RoundingMode.HALF_UP);
     }
-    public void stop(BigDecimal meterWh, SessionStatus finalStatus) { applyMeterValue(meterWh); this.status = finalStatus; this.activeConnectorId = null; this.stoppedAt = Instant.now(); this.updatedAt = stoppedAt; calculateTotal(stoppedAt); this.billingPending = finalStatus == SessionStatus.COMPLETED; this.billingRetryAt = stoppedAt; }
+    public void stop(BigDecimal meterWh, SessionStatus finalStatus) { applyMeterValue(meterWh); this.status = finalStatus; this.activeConnectorId = null; this.stoppedAt = Instant.now(); this.updatedAt = stoppedAt; calculateTotal(stoppedAt); this.billingPending = finalStatus == SessionStatus.COMPLETED; this.billingRetryAt = stoppedAt; this.stoppedSmsPending = true; this.stoppedSmsRetryAt = stoppedAt; }
     public void completeRecovered(BigDecimal meterWh) {
         Instant confirmedStoppedAt = stoppedAt;
         applyMeterValue(meterWh);
