@@ -18,10 +18,19 @@ spring:
 server.port: ${SERVER_PORT:8093}
 management.endpoints.web.exposure.include: health,info
 tekwatt:
+  services:
+    admin: ${ADMIN_SERVICE_URL:http://localhost:8100}
+    auth: ${AUTH_SERVICE_URL:http://localhost:8081}
   email:
     from: ${SMTP_FROM:${SMTP_USERNAME:}}
   sms:
+    credentials-encryption-key: ${SMS_PROVIDER_ENCRYPTION_KEY:}
+    provider-admin-emails: ${SMS_PROVIDER_ADMIN_EMAILS:}
     msg91:
       auth-key: ${MSG91_AUTH_KEY:}
       template-id: ${MSG91_TEMPLATE_ID:}
       message-variable: ${MSG91_MESSAGE_VARIABLE:message}
+    twilio:
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      from: ${TWILIO_FROM:}

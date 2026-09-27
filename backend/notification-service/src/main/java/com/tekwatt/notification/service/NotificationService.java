@@ -13,10 +13,10 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class NotificationService {
     private final NotificationRepository repo;
-    private final Msg91SmsClient sms;
+    private final SmsProviderRouter sms;
     private final SmtpEmailClient email;
 
-    public NotificationService(NotificationRepository repo, Msg91SmsClient sms, SmtpEmailClient email) {
+    public NotificationService(NotificationRepository repo, SmsProviderRouter sms, SmtpEmailClient email) {
         this.repo = repo;
         this.sms = sms;
         this.email = email;
@@ -50,7 +50,8 @@ public class NotificationService {
         }
         try {
             if (notification.getChannel() == NotificationChannel.SMS)
-                notification.sent(sms.send(notification.getRecipient(), notification.getBody()));
+                notification.sent(sms.send(notification.getTenantId(), notification.getRecipient(),
+                        notification.getBody(), notification.getTemplateKey()));
             else if (notification.getChannel() == NotificationChannel.EMAIL)
                 notification.sent(email.send(notification.getRecipient(), notification.getSubject(), notification.getBody()));
             else

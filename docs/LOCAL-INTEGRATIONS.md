@@ -31,6 +31,10 @@ Official setup reference: <https://razorpay.com/docs/api/orders/>
 
 ## MSG91 SMS
 
+Administrators can enter MSG91 or Twilio credentials in **Settings → General Settings → Messaging provider credentials**. The provider key is accepted once, encrypted in the notification database, and never returned to the browser. Set a persistent, random `SMS_PROVIDER_ENCRYPTION_KEY` on the notification service before saving from the app (32 random bytes, Base64 encoded). Do not change that key after credentials are stored, or the saved credentials cannot be decrypted. The notification service needs `AUTH_SERVICE_URL` pointing to the authentication service to verify the active login session. It accepts an `ADMIN` token, or a legacy administrator account whose email is explicitly listed in `SMS_PROVIDER_ADMIN_EMAILS` and has an active administrator record in the selected workspace. Leave the allowlist empty unless a legacy administrator needs it.
+
+After saving credentials, select the matching SMS provider under General Settings and save those general settings. The previous environment-variable configuration remains a fallback when no per-workspace credentials are saved. Do not enter provider secrets in general settings, browser storage, or source-controlled files.
+
 For Indian SMS, create and approve the required sender/template in MSG91 and complete the applicable DLT registration. The template must expose a variable whose name matches `MSG91_MESSAGE_VARIABLE` (the default is `message`).
 
 Set the credentials in the PowerShell window before starting the backend:

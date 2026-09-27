@@ -14,6 +14,7 @@ export type RazorpayVerification = { paymentId:string;razorpayPaymentId:string;r
 export type UserProfile = { id: string; authUserId?:string; tenantId?:string; firstName?: string; lastName?: string; fullName?:string; email: string; phone?:string; city?:string; zipcode?:string; status?: string; createdAt?:string; updatedAt?:string };
 export type Report = { id: string; type?: string; fileName?: string; status?: string; createdAt?: string };
 export type Notification = { id: string; channel: string; recipient: string; subject?: string; body: string; status: string; providerMessageId?:string;lastError?:string;attemptCount?:number;maxAttempts?:number;createdAt?: string };
+export type SmsProviderCredential={provider:'MSG91'|'TWILIO';secretConfigured:boolean;publicIdentifier:string;sender:string;templateId:string;chargingStartedTemplateId:string;chargingCompletedTemplateId:string;messageVariable:string;updatedAt:string};
 export type Connector = { id: string; tenantId: string; chargerId: string; connectorNumber: number; type: string; maxPowerKw: number; maxVoltage: number; maxCurrent: number; status: string };
 export type OcppConnection = { stationId: string; connected: boolean; connectedAt?: string; protocol?: string };
 export type OcppMessage = { id: string; stationId: string; direction: string; messageType: number; uniqueId: string; action?: string; payload: string; createdAt: string };
@@ -29,7 +30,7 @@ export type Wallet = { id:string; tenantId:string; userId:string; balance:number
 export type WalletEntry = { id:string; walletId:string; amount:number; balanceAfter:number; reason:string; reference?:string; createdAt:string };
 export type ScanPayOrder = { id:string; orderNumber:string; tenantId:string; userId:string; stationId?:string; chargerId?:string; amount:number; currency:string; status:string; paymentId?:string; sessionId?:string; payload:string; createdAt:string };
 export type Invoice = { id:string;tenantId:string;userId:string;billId:string;invoiceNumber:string;customerName:string;customerEmail:string;subtotal:number;taxAmount:number;totalAmount:number;currency:string;status:string;issueDate:string;dueDate:string;createdAt:string };
-export type Bill = { id:string;tenantId:string;userId:string;billNumber:string;subtotal:number;taxAmount:number;totalAmount:number;currency:string;status:string;createdAt:string };
+export type Bill = { id:string;tenantId:string;userId:string;sessionId:string;billNumber:string;energyKwh:number;durationMinutes:number;energyAmount:number;timeAmount:number;sessionFee:number;subtotal:number;taxPercent:number;taxAmount:number;totalAmount:number;currency:string;status:string;createdAt:string };
 export type Partner = {id:string;tenantId:string;companyName:string;partnerUniqueId:string;contactName:string;email?:string;phone?:string;commissionPercent:number;status:string;address?:string;appLoginEmail?:string;authUserId?:string;createdAt:string};
 export type Technician = {id:string;tenantId:string;name:string;email:string;phone?:string;skills?:string;status:string;authUserId?:string;createdAt:string};
 export type RfidCard = {id:string;tenantId:string;cardUid:string;label?:string;userId?:string;notes?:string;status:string;issuedAt:string;revokedAt?:string};
@@ -159,7 +160,9 @@ export const api = {
   tenants: async () => pageContent(await request<{ content: Tenant[] }>('/api/v1/tenants?page=0&size=100')),
   createTenant: (body:{name:string;slug:string;contactEmail:string}) => request<Tenant>('/api/v1/tenants',{method:'POST',body:JSON.stringify(body)}),
   chargers: (tenantId: string) => request<Charger[]>(`/api/v1/chargers?tenantId=${encodeURIComponent(tenantId)}`),
+  charger: (id:string)=>request<Charger>(`/api/v1/chargers/${id}`),
   sessions: (tenantId: string) => request<ChargingSession[]>(`/api/v1/charging-sessions?tenantId=${encodeURIComponent(tenantId)}`),
+  session: (id:string)=>request<ChargingSession>(`/api/v1/charging-sessions/${id}`),
   startSession: (body:{tenantId:string;userId:string;chargerId:string;connectorId:string;transactionId:string;meterStartWh:number;currency?:string}) => request<ChargingSession>('/api/v1/charging-sessions',{method:'POST',body:JSON.stringify(body)}),
   recordSessionMeter: (id:string,meterWh:number) => request<ChargingSession>(`/api/v1/charging-sessions/${id}/meter-values`,{method:'POST',body:JSON.stringify({meterWh,recordedAt:new Date().toISOString()})}),
   stopSession: (id:string,_meterStopWh:number,_status='COMPLETED') => stopCharger(id,request),
@@ -168,11 +171,13 @@ export const api = {
   verifyRazorpayPayment: (body:RazorpayVerification) => request<Payment>('/api/v1/payments/razorpay/verify',{method:'POST',body:JSON.stringify(body)}),
   refundPayment: (id: string) => request<Payment>(`/api/v1/payments/${id}/refund`, { method: 'POST' }),
   bills: (tenantId:string)=>request<Bill[]>(`/api/v1/bills?tenantId=${encodeURIComponent(tenantId)}`),
+  bill: (id:string)=>request<Bill>(`/api/v1/bills/${id}`),
   invoices: (tenantId:string)=>request<Invoice[]>(`/api/v1/invoices?tenantId=${encodeURIComponent(tenantId)}`),
   createInvoice: (body:Record<string,unknown>)=>request<Invoice>('/api/v1/invoices',{method:'POST',body:JSON.stringify(body)}),
   invoiceAction: (id:string,action:'issue'|'pay'|'void')=>request<Invoice>(`/api/v1/invoices/${id}/${action}`,{method:'POST'}),
   paymentGateways:(tenantId:string)=>request<PaymentGateway[]>(`/api/v1/payments/operations/gateways?tenantId=${encodeURIComponent(tenantId)}`),
   savePaymentGateway:(tenantId:string,body:Record<string,unknown>)=>request<PaymentGateway>(`/api/v1/payments/operations/gateways?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
+  testRazorpayGateway:(tenantId:string)=>request<{success:boolean;message:string}>(`/api/v1/payments/operations/gateways/razorpay/test?tenantId=${encodeURIComponent(tenantId)}`,{method:'POST'}),
   wallets:(tenantId:string)=>request<Wallet[]>(`/api/v1/payments/operations/wallets?tenantId=${encodeURIComponent(tenantId)}`),
   createWallet:(body:{tenantId:string;userId:string;currency:string})=>request<Wallet>('/api/v1/payments/operations/wallets',{method:'POST',body:JSON.stringify(body)}),
   walletEntries:(id:string)=>request<WalletEntry[]>(`/api/v1/payments/operations/wallets/${id}/entries`),
@@ -258,6 +263,8 @@ export const api = {
   disableAdminApiKey:(id:string)=>request<AdminApiKey>(`/api/v1/admin/governance/api-keys/${id}/disable`,{method:'POST'}),
   governanceSettings:(tenantId:string)=>request<Record<string,string>>(`/api/v1/admin/governance/settings?tenantId=${encodeURIComponent(tenantId)}`),
   saveGovernanceSettings:(tenantId:string,body:Record<string,string>)=>request<Record<string,string>>(`/api/v1/admin/governance/settings?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
+  smsProviderCredentials:(tenantId:string)=>request<SmsProviderCredential[]>(`/api/v1/notifications/provider-credentials?tenantId=${encodeURIComponent(tenantId)}`),
+  saveSmsProviderCredentials:(tenantId:string,body:{provider:'MSG91'|'TWILIO';publicIdentifier:string;sender:string;templateId:string;chargingStartedTemplateId:string;chargingCompletedTemplateId:string;messageVariable:string;secret:string})=>request<SmsProviderCredential>(`/api/v1/notifications/provider-credentials?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
   tariffAssignments:(tenantId:string)=>request<TariffAssignment[]>(`/api/v1/tariffs/assignments?tenantId=${encodeURIComponent(tenantId)}`),
   assignTariff:(tariffId:string,tenantId:string,chargerId:string)=>request<TariffAssignment>(`/api/v1/tariffs/${tariffId}/assignments`,{method:'POST',body:JSON.stringify({tenantId,chargerId})}),
   unassignTariff:(tenantId:string,chargerId:string)=>request<void>(`/api/v1/tariffs/assignments?tenantId=${encodeURIComponent(tenantId)}&chargerId=${encodeURIComponent(chargerId)}`,{method:'DELETE'}),

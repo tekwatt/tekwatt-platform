@@ -33,6 +33,10 @@ public class Msg91SmsClient {
     }
 
     public String send(String recipient, String message) {
+        return send(recipient, message, authKey, templateId, messageVariable);
+    }
+
+    public String send(String recipient, String message, String authKey, String templateId, String messageVariable) {
         if (authKey.isBlank() || templateId.isBlank())
             throw new SmsDeliveryException("MSG91 is not configured. Set MSG91_AUTH_KEY and MSG91_TEMPLATE_ID.");
         String mobile = normalize(recipient);
