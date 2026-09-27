@@ -2,6 +2,8 @@ package com.tekwatt.user.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity @Table(name = "user_profiles")
@@ -19,9 +21,15 @@ public class UserProfile {
     @Enumerated(EnumType.STRING) @Column(nullable=false, length=20) private UserStatus status = UserStatus.ACTIVE;
     @Column(name="created_at", nullable=false) private Instant createdAt = Instant.now();
     @Column(name="updated_at", nullable=false) private Instant updatedAt = Instant.now();
+    @ElementCollection(fetch=FetchType.EAGER)
+    @CollectionTable(name="user_charger_assignments", joinColumns=@JoinColumn(name="user_id"))
+    @Column(name="charger_id", nullable=false)
+    private Set<UUID> assignedChargerIds = new LinkedHashSet<>();
     protected UserProfile() { }
     public UserProfile(UUID authUserId, UUID tenantId, String firstName, String lastName, String fullName, String email, String phone, String city, String zipcode, String status) { this.authUserId=authUserId; this.tenantId=tenantId; update(firstName,lastName,fullName,email,phone,city,zipcode,status); }
     public void update(String firstName, String lastName, String fullName, String email, String phone, String city, String zipcode, String status) { this.firstName=firstName; this.lastName=lastName; this.fullName=fullName==null||fullName.isBlank()?(firstName+" "+lastName).trim():fullName.trim(); this.email=email; this.phone=phone; this.city=city; this.zipcode=zipcode; if(status!=null&&!status.isBlank())this.status=UserStatus.valueOf(status.toUpperCase()); this.updatedAt=Instant.now(); }
     public void deactivate() { status=UserStatus.INACTIVE; updatedAt=Instant.now(); }
+    public void assignChargers(Set<UUID> chargerIds) { assignedChargerIds.clear(); if(chargerIds!=null) assignedChargerIds.addAll(chargerIds); updatedAt=Instant.now(); }
+    public Set<UUID> getAssignedChargerIds() { return Set.copyOf(assignedChargerIds); }
     public UUID getId(){return id;} public UUID getAuthUserId(){return authUserId;} public UUID getTenantId(){return tenantId;} public String getFirstName(){return firstName;} public String getLastName(){return lastName;} public String getFullName(){return fullName;} public String getEmail(){return email;} public String getPhone(){return phone;} public String getCity(){return city;} public String getZipcode(){return zipcode;} public UserStatus getStatus(){return status;} public Instant getCreatedAt(){return createdAt;} public Instant getUpdatedAt(){return updatedAt;}
 }

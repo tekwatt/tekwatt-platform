@@ -194,6 +194,11 @@ td:first-child { display:grid; }td strong{color:var(--ink);font-size:10px}td sma
 .session-tariff-summary{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:14px;padding:14px;border:1px solid #b9dfd4;border-radius:10px;background:#edf9f5}.session-tariff-summary>div{display:grid;gap:3px}.session-tariff-summary small{color:#28836e;font-size:8px;font-weight:800;letter-spacing:.1em}.session-tariff-summary strong{font-size:11px}.session-tariff-summary dl{display:grid;grid-template-columns:repeat(4,minmax(80px,1fr));gap:9px;margin:0}.session-tariff-summary dl>div{display:grid;gap:2px;padding-left:10px;border-left:1px solid #c9e8df}.session-tariff-summary dt{color:var(--muted);font-size:8px}.session-tariff-summary dd{margin:0;color:#176c5b;font-size:10px;font-weight:800}.dark .session-warning{background:#2b240f;color:#f5d77d;border-color:#6f5b22}.dark .session-warning p{color:#dfc870}.dark .session-warning .secondary{background:#211c0d;border-color:#6f5b22;color:#f5d77d}.dark .session-tariff-summary{background:#102b26;border-color:#28584d}.dark .session-tariff-summary dd{color:#8edfc9}
 .directory-form .card-head { margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--line); }
 .directory-form label>small { color:var(--muted); font-size:9px; font-weight:500; margin-top:-2px; }
+.charger-assignment { border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-top:14px; max-height:230px; overflow:auto; }
+.charger-assignment legend { font-weight:700; padding:0 6px; }
+.charger-assignment p { color:var(--muted); margin:4px 0 10px; }
+.charger-assignment-option { display:flex!important; align-items:center; gap:10px; margin:6px 0; font-weight:500; }
+.charger-assignment-option input { width:17px; height:17px; margin:0; flex:none; }
 .directory-table table { min-width:920px; }
 .settings-form { max-width:760px; }
 .form-grid textarea { min-height:82px; resize:vertical; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 10px; outline:none; font:inherit; font-size:11px; }

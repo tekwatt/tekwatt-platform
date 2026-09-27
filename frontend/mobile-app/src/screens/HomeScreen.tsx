@@ -22,7 +22,8 @@ export function HomeScreen() {
     if(!silent)setLoading(true); setError('');
     try {
       const [stationData, sessionData, wallets] = await Promise.all([api.chargers(tenant.id, token), api.sessions(tenant.id, token), api.wallets(tenant.id, token)]);
-      setChargers(stationData); setSessions(sessionData.filter(item => !profile || item.userId === profile.id)); setWallet(wallets.find(item => item.userId === profile?.id) || null);
+      const allowed=new Set(profile?.assignedChargerIds??[]);
+      setChargers(stationData.filter(item=>allowed.has(item.id))); setSessions(sessionData.filter(item => Boolean(profile && item.userId === profile.id))); setWallet(wallets.find(item => item.userId === profile?.id) || null);
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load your dashboard.'); }
     finally { if(!silent)setLoading(false); }
   }, [profile, tenant, token]);

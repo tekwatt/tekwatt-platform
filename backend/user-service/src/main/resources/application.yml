@@ -13,6 +13,9 @@ spring:
     enabled: true
 server:
   port: ${SERVER_PORT:8082}
+tekwatt:
+  services:
+    charger: ${CHARGER_SERVICE_URL:http://localhost:8083}
 management:
   endpoint:
     health:

@@ -11,7 +11,7 @@ export type ChargingSession = { id: string; transactionId: string; userId?: stri
 export type Payment = { id: string; tenantId?:string; userId?: string; billId?:string; invoiceId?:string; provider?:string; providerOrderId?:string; providerReference?:string; amount?: number; currency?: string; status?: string; createdAt?: string };
 export type RazorpayOrder = { paymentId:string;orderId:string;keyId:string;amount:number;currency:string;description?:string };
 export type RazorpayVerification = { paymentId:string;razorpayPaymentId:string;razorpayOrderId:string;razorpaySignature:string };
-export type UserProfile = { id: string; authUserId?:string; tenantId?:string; firstName?: string; lastName?: string; fullName?:string; email: string; phone?:string; city?:string; zipcode?:string; status?: string; createdAt?:string; updatedAt?:string };
+export type UserProfile = { id: string; authUserId?:string; tenantId?:string; firstName?: string; lastName?: string; fullName?:string; email: string; phone?:string; city?:string; zipcode?:string; status?: string; assignedChargerIds?:string[]; createdAt?:string; updatedAt?:string };
 export type Report = { id: string; type?: string; fileName?: string; status?: string; createdAt?: string };
 export type Notification = { id: string; channel: string; recipient: string; subject?: string; body: string; status: string; providerMessageId?:string;lastError?:string;attemptCount?:number;maxAttempts?:number;createdAt?: string };
 export type SmsFlowTemplate={templateKey:string;flowId:string;messageVariable:string};
@@ -186,8 +186,8 @@ export const api = {
   scanPayOrders:(tenantId:string)=>request<ScanPayOrder[]>(`/api/v1/payments/operations/scan-pay-orders?tenantId=${encodeURIComponent(tenantId)}`),
   createScanPayOrder:(body:Record<string,unknown>)=>request<ScanPayOrder>('/api/v1/payments/operations/scan-pay-orders',{method:'POST',body:JSON.stringify(body)}),
   users: async (tenantId: string) => pageContent(await request<{ content: UserProfile[] }>(`/api/v1/users?tenantId=${encodeURIComponent(tenantId)}&page=0&size=100`)),
-  createUser: (body: { authUserId: string; tenantId: string; firstName: string; lastName: string; fullName?:string; email: string; phone?: string; city?:string; zipcode?:string; status?:string }) => request<UserProfile>('/api/v1/users', { method: 'POST', body: JSON.stringify(body) }),
-  updateUser: (id:string,body:{firstName:string;lastName:string;fullName?:string;email:string;phone?:string;city?:string;zipcode?:string;status?:string})=>request<UserProfile>(`/api/v1/users/${id}`,{method:'PUT',body:JSON.stringify(body)}),
+  createUser: (body: { authUserId: string; tenantId: string; firstName: string; lastName: string; fullName?:string; email: string; phone?: string; city?:string; zipcode?:string; status?:string; assignedChargerIds?:string[] }) => request<UserProfile>('/api/v1/users', { method: 'POST', body: JSON.stringify(body) }),
+  updateUser: (id:string,body:{firstName:string;lastName:string;fullName?:string;email:string;phone?:string;city?:string;zipcode?:string;status?:string;assignedChargerIds?:string[]})=>request<UserProfile>(`/api/v1/users/${id}`,{method:'PUT',body:JSON.stringify(body)}),
   deactivateUser: (id: string) => request<void>(`/api/v1/users/${id}`, { method: 'DELETE' }),
   partners:(tenantId:string)=>request<Partner[]>(`/api/v1/users/directory/partners?tenantId=${encodeURIComponent(tenantId)}`),
   savePartner:(body:Record<string,unknown>,id?:string)=>request<Partner>(id?`/api/v1/users/directory/partners/${id}`:'/api/v1/users/directory/partners',{method:id?'PUT':'POST',body:JSON.stringify(body)}),

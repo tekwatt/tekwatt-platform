@@ -19,15 +19,15 @@ export function StationsScreen() {
   const [starting, setStarting] = useState('');
   const [reserving,setReserving]=useState('');
   const [error, setError] = useState('');
-  const load = useCallback(async (silent=false) => { if (!token || !tenant) return; if(!silent)setLoading(true); setError(''); try { setChargers(await api.chargers(tenant.id, token)); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load stations.'); } finally { if(!silent)setLoading(false); } }, [tenant, token]);
+  const load = useCallback(async (silent=false) => { if (!token || !tenant) return; if(!silent)setLoading(true); setError(''); try { const allowed=new Set(profile?.assignedChargerIds??[]);setChargers((await api.chargers(tenant.id, token)).filter(item=>allowed.has(item.id))); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load stations.'); } finally { if(!silent)setLoading(false); } }, [tenant, token, profile]);
   useFocusEffect(useCallback(() => { void load();const timer=setInterval(()=>void load(true),15_000);return()=>clearInterval(timer); }, [load]));
   const filtered = useMemo(() => chargers.filter(item => `${item.stationName} ${item.stationId} ${item.city} ${item.address}`.toLowerCase().includes(query.toLowerCase())), [chargers, query]);
   const mapped = useMemo(() => filtered.filter(item => item.latitude != null && item.longitude != null
     && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude))
     && Math.abs(Number(item.latitude)) <= 90 && Math.abs(Number(item.longitude)) <= 180), [filtered]);
-  const open = async (charger: Charger) => { if (!token) return; setSelected(charger); setConnectors([]); setError(''); try { setConnectors(await api.connectors(charger.id, token)); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load connectors.'); } };
+  const open = async (charger: Charger) => { if (!token || !profile?.assignedChargerIds?.includes(charger.id)) return; setSelected(charger); setConnectors([]); setError(''); try { setConnectors(await api.connectors(charger.id, token)); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load connectors.'); } };
   const start = async (connector: Connector) => {
-    if (!token || !tenant || !profile || !selected) return setError('Your customer profile is not linked to this account. Contact support.');
+    if (!token || !tenant || !profile || !selected || !profile.assignedChargerIds?.includes(selected.id)) return setError('This charger is not assigned to your account. Contact support.');
     setStarting(connector.id); setError('');
     try {
       await api.startSession({ tenantId: tenant.id, userId: profile.id, chargerId: selected.id, connectorId: connector.id, transactionId: `APP-${Date.now()}`, meterStartWh: 0, pricePerKwh: selected.pricePerKwh || 0, currency: 'INR' }, token);
@@ -35,7 +35,7 @@ export function StationsScreen() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to start charging.'); }
     finally { setStarting(''); }
   };
-  const reserve=async(connector:Connector)=>{if(!token||!tenant||!profile||!selected)return setError('Your customer profile is not linked to this account. Contact support.');setReserving(connector.id);setError('');try{const startsAt=new Date();const expiresAt=new Date(startsAt.getTime()+30*60_000);await api.createReservation({tenantId:tenant.id,userId:profile.id,chargerId:selected.id,connectorId:connector.id,reference:`APP-RES-${Date.now()}`,startsAt:startsAt.toISOString(),expiresAt:expiresAt.toISOString()},token);setSelected(null);navigation.navigate('More');navigation.getParent()?.navigate('Reservations');}catch(reason){setError(reason instanceof Error?reason.message:'Unable to reserve this connector.');}finally{setReserving('');}};
+  const reserve=async(connector:Connector)=>{if(!token||!tenant||!profile||!selected||!profile.assignedChargerIds?.includes(selected.id))return setError('Your customer profile is not linked to this account. Contact support.');setReserving(connector.id);setError('');try{const startsAt=new Date();const expiresAt=new Date(startsAt.getTime()+30*60_000);await api.createReservation({tenantId:tenant.id,userId:profile.id,chargerId:selected.id,connectorId:connector.id,reference:`APP-RES-${Date.now()}`,startsAt:startsAt.toISOString(),expiresAt:expiresAt.toISOString()},token);setSelected(null);navigation.navigate('More');navigation.getParent()?.navigate('Reservations');}catch(reason){setError(reason instanceof Error?reason.message:'Unable to reserve this connector.');}finally{setReserving('');}};
   const directions=async(charger:Charger)=>{if(charger.latitude==null||charger.longitude==null)return setError('Directions are unavailable because this station has no coordinates.');await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${charger.latitude},${charger.longitude}`);};
   return <Screen refreshing={loading} onRefresh={load}>
     <PageHeader eyebrow="CHARGE POINTS" title="Find a station" subtitle="Search live TekWatt chargers and choose an available connector."/>
