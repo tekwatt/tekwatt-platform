@@ -1,3 +1,4 @@
+import { stopCharger } from './stopCharger';
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 const configuredTimeoutSeconds=Number(import.meta.env.VITE_API_TIMEOUT_SECONDS??12);const API_TIMEOUT_MS=(Number.isFinite(configuredTimeoutSeconds)&&configuredTimeoutSeconds>0?configuredTimeoutSeconds:12)*1000;
 
@@ -161,7 +162,7 @@ export const api = {
   sessions: (tenantId: string) => request<ChargingSession[]>(`/api/v1/charging-sessions?tenantId=${encodeURIComponent(tenantId)}`),
   startSession: (body:{tenantId:string;userId:string;chargerId:string;connectorId:string;transactionId:string;meterStartWh:number;currency?:string}) => request<ChargingSession>('/api/v1/charging-sessions',{method:'POST',body:JSON.stringify(body)}),
   recordSessionMeter: (id:string,meterWh:number) => request<ChargingSession>(`/api/v1/charging-sessions/${id}/meter-values`,{method:'POST',body:JSON.stringify({meterWh,recordedAt:new Date().toISOString()})}),
-  stopSession: (id:string,meterStopWh:number,status='COMPLETED') => request<ChargingSession>(`/api/v1/charging-sessions/${id}/stop`,{method:'POST',body:JSON.stringify({meterStopWh,status})}),
+  stopSession: (id:string,_meterStopWh:number,_status='COMPLETED') => stopCharger(id,request),
   payments: (tenantId: string) => request<Payment[]>(`/api/v1/payments?tenantId=${encodeURIComponent(tenantId)}`),
   createRazorpayOrder: (body:{tenantId:string;userId:string;billId:string;invoiceId?:string;idempotencyKey:string;amount:number;currency:string;description?:string}) => request<RazorpayOrder>('/api/v1/payments/razorpay/orders',{method:'POST',body:JSON.stringify(body)}),
   verifyRazorpayPayment: (body:RazorpayVerification) => request<Payment>('/api/v1/payments/razorpay/verify',{method:'POST',body:JSON.stringify(body)}),

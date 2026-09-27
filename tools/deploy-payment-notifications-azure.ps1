@@ -33,7 +33,7 @@ if (-not (Test-Path -LiteralPath $Maven)) { throw "Maven not found: $Maven" }
 if (-not (Test-Path -LiteralPath (Join-Path $JavaHome 'bin\java.exe'))) { throw "JDK not found: $JavaHome" }
 $account = (Invoke-Az @('account','show','--query','id','-o','tsv')).Trim()
 if ($account -ne $SubscriptionId) { throw "Wrong active subscription. Select $SubscriptionId in Azure CLI and rerun." }
-foreach ($name in @('charging-session-service','notification-service')) {
+foreach ($name in @('charging-session-service','notification-service','ocpp-gateway')) {
     $containers = Invoke-Az @('containerapp','show','-g',$ResourceGroup,'-n',$name,'--query','properties.template.containers[].name','-o','tsv')
     if (@($containers) -notcontains $name) { throw "Expected container '$name' was not found. No resources updated." }
 }
@@ -42,8 +42,8 @@ $oldApi = $env:VITE_API_BASE_URL
 $oldStorageKey = $env:AZURE_STORAGE_KEY
 try {
     $env:JAVA_HOME = $JavaHome
-    Write-Host 'Building and testing both services (without cleaning running JARs)...'
-    & $Maven -f (Join-Path $repo 'backend\pom.xml') "-Dmaven.repo.local=$repo\.maven-repository" -pl 'charging-session-service,notification-service' -am package
+    Write-Host 'Building and testing all three services (without cleaning running JARs)...'
+    & $Maven -f (Join-Path $repo 'backend\pom.xml') "-Dmaven.repo.local=$repo\.maven-repository" -pl 'charging-session-service,notification-service,ocpp-gateway' -am package
     if ($LASTEXITCODE -ne 0) { throw 'Backend build/tests failed. No deployment performed.' }
     Push-Location (Join-Path $repo 'frontend\admin-portal')
     try {
@@ -55,8 +55,8 @@ try {
     } finally { Pop-Location }
 
     # Upload all images before changing either running service. Temporary folders contain no secrets.
-    foreach ($name in @('notification-service','charging-session-service')) {
-        $suffix = if ($name -eq 'charging-session-service') { '-exec' } else { '' }
+    foreach ($name in @('notification-service','charging-session-service','ocpp-gateway')) {
+        $suffix = if ($name -in @('charging-session-service','ocpp-gateway')) { '-exec' } else { '' }
         $jar = Join-Path $repo "backend\$name\target\$name-0.1.0-SNAPSHOT$suffix.jar"
         if (-not (Test-Path -LiteralPath $jar)) { throw "Missing build output: $jar" }
         $context = Join-Path $env:TEMP ("tekwatt-payment-" + [guid]::NewGuid().ToString('N'))
@@ -67,10 +67,24 @@ try {
     }
     Invoke-Az @('containerapp','update','-g',$ResourceGroup,'-n','notification-service','--container-name','notification-service','--image',"$AcrName.azurecr.io/tekwatt/notification-service:$tag",'--output','none')
     Wait-Revision 'notification-service'
+    # Internal-only recovery calls use a separate credential, never the public OCPP password.
+    $recoveryKey = (Invoke-Az @('containerapp','secret','list','-g',$ResourceGroup,'-n','charging-session-service','--show-values','--query',"[?name=='session-recovery-key'].value | [0]",'-o','tsv'))
+    if ([string]::IsNullOrWhiteSpace($recoveryKey)) {
+        $random = New-Object byte[] 32
+        $generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+        try { $generator.GetBytes($random) } finally { $generator.Dispose() }
+        $recoveryKey = [Convert]::ToBase64String($random)
+    }
+    foreach ($service in @('charging-session-service','ocpp-gateway')) {
+        Invoke-Az @('containerapp','secret','set','-g',$ResourceGroup,'-n',$service,'--secrets',"session-recovery-key=$recoveryKey",'--output','none')
+    }
+    $recoveryKey = $null
     # SMS deliberately stays disabled until sender configuration and authorization checks pass.
     # One minimum replica is required for the durable billing worker (ongoing Azure cost).
-    Invoke-Az @('containerapp','update','-g',$ResourceGroup,'-n','charging-session-service','--container-name','charging-session-service','--image',"$AcrName.azurecr.io/tekwatt/charging-session-service:$tag",'--min-replicas','1','--set-env-vars','BILLING_SERVICE_URL=http://billing-service','INVOICE_SERVICE_URL=http://invoice-service','USER_SERVICE_URL=http://user-service','NOTIFICATION_SERVICE_URL=http://notification-service',"CUSTOMER_PORTAL_URL=$PortalUrl",'AUTO_SESSION_BILLING_ENABLED=true','PAYMENT_SMS_ENABLED=false','--output','none')
+    Invoke-Az @('containerapp','update','-g',$ResourceGroup,'-n','charging-session-service','--container-name','charging-session-service','--image',"$AcrName.azurecr.io/tekwatt/charging-session-service:$tag",'--min-replicas','1','--set-env-vars','SESSION_RECOVERY_KEY=secretref:session-recovery-key','BILLING_SERVICE_URL=http://billing-service','INVOICE_SERVICE_URL=http://invoice-service','USER_SERVICE_URL=http://user-service','NOTIFICATION_SERVICE_URL=http://notification-service',"CUSTOMER_PORTAL_URL=$PortalUrl",'AUTO_SESSION_BILLING_ENABLED=true','PAYMENT_SMS_ENABLED=false','--output','none')
     Wait-Revision 'charging-session-service'
+    Invoke-Az @('containerapp','update','-g',$ResourceGroup,'-n','ocpp-gateway','--container-name','ocpp-gateway','--image',"$AcrName.azurecr.io/tekwatt/ocpp-gateway:$tag",'--set-env-vars','SESSION_RECOVERY_KEY=secretref:session-recovery-key','--output','none')
+    Wait-Revision 'ocpp-gateway'
 
     # Keep the storage key out of console output and command-line arguments.
     $env:AZURE_STORAGE_KEY = (Invoke-Az @('storage','account','keys','list','-g',$ResourceGroup,'--account-name',$StorageAccount,'--query','[0].value','-o','tsv')).Trim()

@@ -25,6 +25,7 @@ public class OcppPlatformBridge {
     private final RestClient users;
     private final RestClient sessions;
     private final RestClient telemetry;
+    @Value("${SESSION_RECOVERY_KEY:}") private String recoveryKey;
 
     public OcppPlatformBridge(
             RestClient.Builder builder,
@@ -69,7 +70,8 @@ public class OcppPlatformBridge {
 
     public void status(String stationId, String protocol, JsonNode payload) {
         StationContext context = context(stationId, connectorNumber(protocol, payload));
-        String connectorStatus = connectorStatus(text(payload, "status").orElse("Unavailable"));
+        String connectorStatus = connectorStatus(text(payload, "connectorStatus").orElseGet(() -> text(payload, "status").orElse("Unavailable")));
+        if ("AVAILABLE".equals(connectorStatus)) reconcileAvailable(context, payload);
         connectors.patch().uri("/api/v1/connectors/{id}/status", context.connector().id())
                 .body(Map.of("status", connectorStatus)).retrieve().toBodilessEntity();
         String chargerStatus = switch (connectorStatus) {
@@ -80,6 +82,31 @@ public class OcppPlatformBridge {
         };
         chargers.patch().uri("/api/v1/chargers/{id}/status", context.charger().id())
                 .body(Map.of("status", chargerStatus)).retrieve().toBodilessEntity();
+    }
+
+    private void reconcileAvailable(StationContext context, JsonNode payload) {
+        if (recoveryKey == null || recoveryKey.isBlank()) return;
+        Instant observedAt;
+        try { observedAt = Instant.parse(payload.path("timestamp").asText()); }
+        catch (RuntimeException invalid) { return; }
+        Instant now = Instant.now();
+        if (observedAt.isBefore(now.minusSeconds(300)) || observedAt.isAfter(now)) return;
+        SessionRef[] active = sessions.get().uri(uri -> uri.path("/api/v1/charging-sessions")
+                .queryParam("tenantId", context.charger().tenantId()).build()).retrieve().body(SessionRef[].class);
+        if (active == null) return;
+        for (SessionRef session : active) {
+            if (!"ACTIVE".equals(session.status()) || !context.connector().id().equals(session.connectorId())) continue;
+            try {
+                sessions.post().uri("/api/v1/charging-sessions/{id}/reconcile-available", session.id())
+                        .header("X-Session-Recovery-Key", recoveryKey)
+                        .body(Map.of("tenantId", context.charger().tenantId(), "connectorId", context.connector().id(), "observedAt", observedAt.toString()))
+                        .retrieve().toBodilessEntity();
+                log.warn("Recovered session {} from fresh Available report; final meter pending, billing held", session.id());
+            } catch (HttpClientErrorException.Conflict changed) {
+                // Do not publish stale availability over a more recent session/meter update.
+                throw new IllegalArgumentException("Available report predates the latest session state; send current status");
+            }
+        }
     }
 
     public int startLegacy(String stationId, JsonNode payload) {
@@ -153,6 +180,8 @@ public class OcppPlatformBridge {
         SessionRef session = session(transactionId);
         sessions.post().uri("/api/v1/charging-sessions/{id}/stop", session.id())
                 .body(Map.of("meterStopWh", meterWh, "status", "COMPLETED")).retrieve().toBodilessEntity();
+        // A late final event for a recovered session must not free the next car's connector.
+        if ("INTERRUPTED".equals(session.status()) || "COMPLETED".equals(session.status())) return;
         connectors.patch().uri("/api/v1/connectors/{id}/status", session.connectorId())
                 .body(Map.of("status", "AVAILABLE")).retrieve().toBodilessEntity();
         chargers.patch().uri("/api/v1/chargers/{id}/status", session.chargerId())
@@ -238,7 +267,7 @@ public class OcppPlatformBridge {
     }
 
     private int connectorNumber(String protocol, JsonNode payload) {
-        if ("ocpp2.0.1".equals(protocol)) {
+        if ("ocpp2.0.1".equals(protocol) || "ocpp2.0".equals(protocol)) {
             JsonNode evse = payload.path("evse");
             if (evse.has("connectorId")) return evse.path("connectorId").asInt(1);
             if (evse.has("id")) return evse.path("id").asInt(1);
@@ -250,6 +279,7 @@ public class OcppPlatformBridge {
         return switch (value.toLowerCase(Locale.ROOT)) {
             case "available" -> "AVAILABLE";
             case "preparing" -> "PREPARING";
+            case "occupied" -> "PREPARING";
             case "charging" -> "CHARGING";
             case "suspendedev", "suspendedevse" -> "SUSPENDED";
             case "finishing" -> "FINISHING";

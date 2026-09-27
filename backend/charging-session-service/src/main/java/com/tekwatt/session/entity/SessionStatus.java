@@ -1,3 +1,3 @@
 package com.tekwatt.session.entity;
 
-public enum SessionStatus { ACTIVE, COMPLETED, STOPPED, FAILED }
+public enum SessionStatus { ACTIVE, COMPLETED, STOPPED, FAILED, INTERRUPTED }

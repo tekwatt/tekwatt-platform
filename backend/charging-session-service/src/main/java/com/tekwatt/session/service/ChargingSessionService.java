@@ -44,6 +44,12 @@ public class ChargingSessionService {
     }
     public SessionResponse stop(UUID id, StopSessionRequest r) {
         ChargingSession s = locked(id); SessionStatus finalStatus = r.status() == null ? SessionStatus.COMPLETED : r.status();
+        if (finalStatus == SessionStatus.INTERRUPTED) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Interrupted recovery requires a fresh charger Available report");
+        if (s.getStatus() == SessionStatus.INTERRUPTED && finalStatus == SessionStatus.COMPLETED) {
+            try { s.completeRecovered(r.meterStopWh()); } catch (IllegalArgumentException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()); }
+            readings.save(new MeterReading(id, r.meterStopWh(), Instant.now()));
+            return map(s);
+        }
         if (s.getStatus() != SessionStatus.ACTIVE) {
             if (s.getStatus() == finalStatus && s.getMeterStopWh() != null && s.getMeterStopWh().compareTo(r.meterStopWh()) == 0) return map(s);
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Session is already stopped with different final values");
@@ -51,6 +57,18 @@ public class ChargingSessionService {
         if (finalStatus == SessionStatus.ACTIVE) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Final status cannot be ACTIVE");
         try { s.stop(r.meterStopWh(), finalStatus); } catch (IllegalArgumentException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()); }
         readings.save(new MeterReading(id, r.meterStopWh(), Instant.now())); return map(s);
+    }
+    public SessionResponse reconcileAvailable(UUID id, ReconcileAvailableRequest r) {
+        ChargingSession s = locked(id);
+        if (!s.getTenantId().equals(r.tenantId()) || !s.getConnectorId().equals(r.connectorId()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Available report does not match this session");
+        if (s.getStatus() != SessionStatus.ACTIVE) return map(s);
+        Instant now = Instant.now();
+        // Reject stale, reordered and future reports; recheck under the same row lock as meter updates.
+        if (!r.observedAt().isAfter(s.getUpdatedAt()) || r.observedAt().isBefore(now.minusSeconds(300)) || r.observedAt().isAfter(now))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A fresh Available report after the last session update is required");
+        s.stop(s.getMeterStopWh() == null ? s.getMeterStartWh() : s.getMeterStopWh(), SessionStatus.INTERRUPTED);
+        return map(s);
     }
     private ChargingSession locked(UUID id) { return sessions.findForUpdate(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Charging session not found")); }
     private ChargingSession active(UUID id) { ChargingSession s = locked(id); if (s.getStatus() != SessionStatus.ACTIVE) throw new ResponseStatusException(HttpStatus.CONFLICT, "Session is not active"); return s; }

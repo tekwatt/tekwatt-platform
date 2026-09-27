@@ -41,6 +41,7 @@ public class ChargingSession {
         this.currency = currency.toUpperCase(); this.startedAt = Instant.now(); this.updatedAt = this.startedAt;
     }
     public void applyMeterValue(BigDecimal meterWh) {
+        if (meterStopWh != null && meterWh.compareTo(meterStopWh) < 0) throw new IllegalArgumentException("Meter value cannot decrease below the last reading");
         if (meterWh.compareTo(meterStartWh) < 0) throw new IllegalArgumentException("Meter value cannot be below the start value");
         this.meterStopWh = meterWh;
         this.energyKwh = meterWh.subtract(meterStartWh).divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
@@ -53,6 +54,15 @@ public class ChargingSession {
         totalCost = subtotal.add(subtotal.multiply(taxPercent).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP)).setScale(2, RoundingMode.HALF_UP);
     }
     public void stop(BigDecimal meterWh, SessionStatus finalStatus) { applyMeterValue(meterWh); this.status = finalStatus; this.activeConnectorId = null; this.stoppedAt = Instant.now(); this.updatedAt = stoppedAt; calculateTotal(stoppedAt); this.billingPending = finalStatus == SessionStatus.COMPLETED; this.billingRetryAt = stoppedAt; }
+    public void completeRecovered(BigDecimal meterWh) {
+        Instant confirmedStoppedAt = stoppedAt;
+        applyMeterValue(meterWh);
+        status = SessionStatus.COMPLETED;
+        stoppedAt = confirmedStoppedAt;
+        calculateTotal(stoppedAt);
+        billingPending = true;
+        billingRetryAt = Instant.now();
+    }
     public UUID getId() { return id; } public UUID getTenantId() { return tenantId; } public UUID getUserId() { return userId; }
     public UUID getChargerId() { return chargerId; } public UUID getConnectorId() { return connectorId; } public String getTransactionId() { return transactionId; }
     public SessionStatus getStatus() { return status; } public BigDecimal getMeterStartWh() { return meterStartWh; } public BigDecimal getMeterStopWh() { return meterStopWh; }

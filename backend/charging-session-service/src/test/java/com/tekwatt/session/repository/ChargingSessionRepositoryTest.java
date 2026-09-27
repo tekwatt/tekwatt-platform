@@ -51,6 +51,21 @@ class ChargingSessionRepositoryTest {
         assertThat(sessions.count()).isEqualTo(2);
     }
 
+    @Test
+    void interruptedSessionReleasesNextCarAndDoesNotQueueBillingUntilFinalMeter() {
+        UUID connectorId=UUID.randomUUID();
+        var recovered=session(connectorId,"RECOVERY-1");
+        recovered.stop(BigDecimal.TEN,SessionStatus.INTERRUPTED);
+        sessions.saveAndFlush(recovered);
+        sessions.saveAndFlush(session(connectorId,"NEXT-CAR"));
+        assertThat(sessions.pendingBilling(java.time.Instant.now().plusSeconds(1),org.springframework.data.domain.PageRequest.of(0,20))).isEmpty();
+        recovered.completeRecovered(new BigDecimal("11"));
+        sessions.saveAndFlush(recovered);
+        assertThat(sessions.existsByConnectorIdAndStatus(connectorId,SessionStatus.ACTIVE)).isTrue();
+        assertThat(sessions.count()).isEqualTo(2);
+        assertThat(sessions.pendingBilling(java.time.Instant.now().plusSeconds(1),org.springframework.data.domain.PageRequest.of(0,20))).containsExactly(recovered.getId());
+    }
+
     private ChargingSession session(UUID connectorId, String transactionId) {
         return new ChargingSession(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), connectorId, UUID.randomUUID(), transactionId,

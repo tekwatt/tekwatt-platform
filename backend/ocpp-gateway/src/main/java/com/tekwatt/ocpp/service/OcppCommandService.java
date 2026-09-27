@@ -43,8 +43,17 @@ public class OcppCommandService {
 
     public String remoteStop(RemoteStopRequest request) {
         String protocol = requireProtocol(request.stationId(), request.ocppVersion());
-        ObjectNode payload = json.createObjectNode().put("transactionId", request.transactionId());
+        ObjectNode payload = json.createObjectNode();
+        if ("ocpp1.6".equals(protocol)) {
+            try { payload.put("transactionId", Integer.parseInt(request.transactionId())); }
+            catch (NumberFormatException exception) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OCPP 1.6 requires the numeric transaction ID returned by StartTransaction"); }
+        } else payload.put("transactionId", request.transactionId());
         return send(request.stationId(), "ocpp1.6".equals(protocol) ? "RemoteStopTransaction" : "RequestStopTransaction", payload);
+    }
+
+    public String requestStatus(String stationId, String requestedProtocol) {
+        requireProtocol(stationId, requestedProtocol);
+        return send(stationId, "TriggerMessage", json.createObjectNode().put("requestedMessage", "StatusNotification"));
     }
 
     public String reserveNow(ReserveNowRequest request) {

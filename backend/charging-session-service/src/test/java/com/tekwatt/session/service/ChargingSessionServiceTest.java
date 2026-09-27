@@ -113,6 +113,51 @@ class ChargingSessionServiceTest {
         assertThat(response.pricePerKwh()).isEqualByComparingTo(tariff.energyPricePerKwh());
     }
 
+    @Test
+    void freshAvailableReleasesSessionWithoutBillingAndLateEndKeepsStopTime() {
+        var s = recoverySession();
+        s.applyMeterValue(new BigDecimal("4767"));
+        org.springframework.test.util.ReflectionTestUtils.setField(s,"updatedAt",java.time.Instant.now().minusSeconds(2));
+        var result = service.reconcileAvailable(s.getId(), new com.tekwatt.session.dto.ReconcileAvailableRequest(s.getTenantId(),s.getConnectorId(),java.time.Instant.now()));
+        assertThat(result.status()).isEqualTo(SessionStatus.INTERRUPTED);
+        assertThat(result.meterStopWh()).isEqualByComparingTo("4767");
+        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(s,"activeConnectorId")).isNull();
+        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(s,"billingPending")).isEqualTo(false);
+        var ended = service.stop(s.getId(),new com.tekwatt.session.dto.StopSessionRequest(new BigDecimal("4800"),SessionStatus.COMPLETED));
+        assertThat(ended.stoppedAt()).isEqualTo(result.stoppedAt());
+        assertThat(ended.status()).isEqualTo(SessionStatus.COMPLETED);
+        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(s,"billingPending")).isEqualTo(true);
+        service.stop(s.getId(),new com.tekwatt.session.dto.StopSessionRequest(new BigDecimal("4800"),SessionStatus.COMPLETED));
+        verify(readings,org.mockito.Mockito.times(1)).save(any());
+    }
+
+    @Test
+    void staleFutureAndWrongConnectorReportsCannotReleaseAnActiveSession() {
+        var s = recoverySession();
+        for (var at : java.util.List.of(s.getStartedAt().minusSeconds(1),java.time.Instant.now().plusSeconds(60)))
+            assertThrows(ResponseStatusException.class,()->service.reconcileAvailable(s.getId(),new com.tekwatt.session.dto.ReconcileAvailableRequest(s.getTenantId(),s.getConnectorId(),at)));
+        assertThrows(ResponseStatusException.class,()->service.reconcileAvailable(s.getId(),new com.tekwatt.session.dto.ReconcileAvailableRequest(s.getTenantId(),UUID.randomUUID(),java.time.Instant.now())));
+        assertThat(s.getStatus()).isEqualTo(SessionStatus.ACTIVE);
+    }
+
+    @Test
+    void recoveryIsIdempotentAndMeterCannotGoBackwards() {
+        var s = recoverySession();
+        s.applyMeterValue(new BigDecimal("4767"));
+        org.springframework.test.util.ReflectionTestUtils.setField(s,"updatedAt",java.time.Instant.now().minusSeconds(2));
+        var evidence = new com.tekwatt.session.dto.ReconcileAvailableRequest(s.getTenantId(),s.getConnectorId(),java.time.Instant.now());
+        var first=service.reconcileAvailable(s.getId(),evidence);
+        assertThat(service.reconcileAvailable(s.getId(),evidence).stoppedAt()).isEqualTo(first.stoppedAt());
+        assertThrows(ResponseStatusException.class,()->service.stop(s.getId(),new com.tekwatt.session.dto.StopSessionRequest(BigDecimal.ZERO,SessionStatus.COMPLETED)));
+        assertThat(s.getStatus()).isEqualTo(SessionStatus.INTERRUPTED);
+    }
+
+    private ChargingSession recoverySession() {
+        var s = new ChargingSession(request.tenantId(),request.userId(),request.chargerId(),request.connectorId(),UUID.randomUUID(),"RECOVER-1",BigDecimal.ZERO,BigDecimal.TEN,BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO,"INR");
+        when(sessions.findForUpdate(s.getId())).thenReturn(java.util.Optional.of(s));
+        return s;
+    }
+
     private TariffClient.ResolvedTariff tariff() {
         return new TariffClient.ResolvedTariff(
                 UUID.randomUUID(), request.tenantId(), "STANDARD", "Standard",
