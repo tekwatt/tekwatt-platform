@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { Card, EmptyState, ErrorBanner, Field, PageHeader, Pill, PrimaryButton, Screen, SecondaryButton, commonStyles } from '../components/ui';
@@ -21,6 +22,9 @@ export function StationsScreen() {
   const load = useCallback(async (silent=false) => { if (!token || !tenant) return; if(!silent)setLoading(true); setError(''); try { setChargers(await api.chargers(tenant.id, token)); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load stations.'); } finally { if(!silent)setLoading(false); } }, [tenant, token]);
   useFocusEffect(useCallback(() => { void load();const timer=setInterval(()=>void load(true),15_000);return()=>clearInterval(timer); }, [load]));
   const filtered = useMemo(() => chargers.filter(item => `${item.stationName} ${item.stationId} ${item.city} ${item.address}`.toLowerCase().includes(query.toLowerCase())), [chargers, query]);
+  const mapped = useMemo(() => filtered.filter(item => item.latitude != null && item.longitude != null
+    && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude))
+    && Math.abs(Number(item.latitude)) <= 90 && Math.abs(Number(item.longitude)) <= 180), [filtered]);
   const open = async (charger: Charger) => { if (!token) return; setSelected(charger); setConnectors([]); setError(''); try { setConnectors(await api.connectors(charger.id, token)); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load connectors.'); } };
   const start = async (connector: Connector) => {
     if (!token || !tenant || !profile || !selected) return setError('Your customer profile is not linked to this account. Contact support.');
@@ -37,9 +41,22 @@ export function StationsScreen() {
     <PageHeader eyebrow="CHARGE POINTS" title="Find a station" subtitle="Search live TekWatt chargers and choose an available connector."/>
     <Field label="Search" value={query} onChangeText={setQuery} placeholder="Station, city or address"/>
     {error && !selected ? <ErrorBanner message={error}/> : null}
+    {mapped.length ? <Card><Text style={commonStyles.sectionTitle}>Station map</Text><MapView
+      key={`${tenant?.id}:${mapped[0]?.id}`}
+      provider={PROVIDER_GOOGLE}
+      style={styles.map}
+      initialRegion={{ latitude: Number(mapped[0]!.latitude), longitude: Number(mapped[0]!.longitude), latitudeDelta: 0.16, longitudeDelta: 0.16 }}
+      accessibilityLabel="Google map showing TekWatt charging stations"
+    >{mapped.map(charger => <Marker key={charger.id}
+      coordinate={{ latitude: Number(charger.latitude), longitude: Number(charger.longitude) }}
+      title={charger.stationName || charger.stationId}
+      description={[charger.address, charger.city].filter(Boolean).join(', ')}
+      pinColor={charger.status === 'AVAILABLE' ? colors.green : colors.amber}
+      onCalloutPress={() => void open(charger)}
+    />)}</MapView><Text style={commonStyles.tiny}>Tap a marker, then its label to view connectors. {filtered.length - mapped.length} station(s) have no usable coordinates.</Text></Card> : filtered.length ? <Text style={commonStyles.body}>Stations need latitude and longitude before they can appear on the map.</Text> : null}
     {!filtered.length ? <EmptyState title="No stations found" message="Try a different search or ask your administrator to add stations to this workspace."/> : filtered.map(charger => <Pressable key={charger.id} onPress={() => void open(charger)}><Card><View style={commonStyles.between}><View style={styles.flex}><Text style={commonStyles.strong}>{charger.stationName || charger.stationId}</Text><Text style={commonStyles.tiny}>{[charger.address, charger.city, charger.state].filter(Boolean).join(', ') || 'Location not set'}</Text></View><Pill label={charger.status} tone={charger.status === 'AVAILABLE' ? 'green' : charger.status === 'FAULTED' ? 'red' : 'neutral'}/></View><View style={styles.specs}><Text style={styles.spec}>⚡ {charger.powerKw || 0} kW</Text><Text style={styles.spec}>₹{Number(charger.pricePerKwh || 0).toFixed(2)}/kWh</Text><Text style={styles.spec}>{charger.openingHours || 'Hours not set'}</Text></View>{charger.latitude!=null&&charger.longitude!=null?<Pressable onPress={()=>void directions(charger)} style={styles.directions}><Text style={styles.directionsText}>Open directions</Text></Pressable>:null}</Card></Pressable>)}
     <Modal animationType="slide" transparent visible={Boolean(selected)} onRequestClose={() => setSelected(null)}><View style={styles.backdrop}><View style={styles.sheet}><View style={commonStyles.between}><View style={styles.flex}><Text style={styles.sheetTitle}>{selected?.stationName || selected?.stationId}</Text><Text style={commonStyles.body}>Select an available connector</Text></View><SecondaryButton label="Close" onPress={() => setSelected(null)}/></View>{error ? <ErrorBanner message={error}/> : null}<View style={styles.connectorList}>{connectors.length ? connectors.map(connector => <Card key={connector.id}><View style={commonStyles.between}><View style={styles.flex}><Text style={commonStyles.strong}>Connector {connector.connectorNumber} · {connector.type}</Text><Text style={commonStyles.tiny}>{connector.maxPowerKw} kW · {connector.maxVoltage} V · {connector.maxCurrent} A</Text></View><Pill label={connector.status} tone={connector.status === 'AVAILABLE' ? 'green' : 'neutral'}/></View><View style={styles.action}><View style={styles.actionButton}><SecondaryButton label="Reserve 30 min" disabled={connector.status !== 'AVAILABLE'||Boolean(starting)||Boolean(reserving)} onPress={() => void reserve(connector)}/></View><View style={styles.actionButton}><PrimaryButton label="Start charging" compact disabled={connector.status !== 'AVAILABLE'||Boolean(reserving)} loading={starting === connector.id} onPress={() => void start(connector)}/></View></View></Card>) : <EmptyState title="No connectors" message="This charger does not have a configured connector."/>}</View></View></View></Modal>
   </Screen>;
 }
 
-const styles = StyleSheet.create({ flex: { flex: 1 }, specs: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 14 }, spec: { color: colors.blue, backgroundColor: colors.surfaceSoft, borderRadius: radius.pill, paddingVertical: 5, paddingHorizontal: 9, fontSize: 10, fontWeight: '800' },directions:{alignSelf:'flex-start',marginTop:12,paddingVertical:5},directionsText:{color:colors.blue,fontSize:11,fontWeight:'900'}, backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00101880' }, sheet: { maxHeight: '78%', backgroundColor: colors.background, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 18, gap: 14 }, sheetTitle: { color: colors.ink, fontSize: 21, fontWeight: '900' }, connectorList: { gap: 11 }, action: { marginTop: 13, flexDirection:'row',gap:8 },actionButton:{flex:1} });
+const styles = StyleSheet.create({ flex: { flex: 1 }, map:{width:'100%',height:300,borderRadius:radius.md,marginBottom:10}, specs: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 14 }, spec: { color: colors.blue, backgroundColor: colors.surfaceSoft, borderRadius: radius.pill, paddingVertical: 5, paddingHorizontal: 9, fontSize: 10, fontWeight: '800' },directions:{alignSelf:'flex-start',marginTop:12,paddingVertical:5},directionsText:{color:colors.blue,fontSize:11,fontWeight:'900'}, backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00101880' }, sheet: { maxHeight: '78%', backgroundColor: colors.background, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 18, gap: 14 }, sheetTitle: { color: colors.ink, fontSize: 21, fontWeight: '900' }, connectorList: { gap: 11 }, action: { marginTop: 13, flexDirection:'row',gap:8 },actionButton:{flex:1} });

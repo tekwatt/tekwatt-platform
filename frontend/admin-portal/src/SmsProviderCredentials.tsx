@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, type SmsProviderCredential } from './api';
+import { api, type SmsProviderCredential, type SmsFlowTemplate } from './api';
 
 export function SmsProviderCredentials({ tenantId }: { tenantId?: string }) {
   const [provider,setProvider]=useState<'MSG91'|'TWILIO'>('MSG91');
@@ -7,10 +7,7 @@ export function SmsProviderCredentials({ tenantId }: { tenantId?: string }) {
   const [secret,setSecret]=useState('');
   const [accountSid,setAccountSid]=useState('');
   const [sender,setSender]=useState('');
-  const [templateId,setTemplateId]=useState('');
-  const [chargingStartedTemplateId,setChargingStartedTemplateId]=useState('');
-  const [chargingCompletedTemplateId,setChargingCompletedTemplateId]=useState('');
-  const [messageVariable,setMessageVariable]=useState('message');
+  const [flowTemplates,setFlowTemplates]=useState<SmsFlowTemplate[]>([]);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [loading,setLoading]=useState(false);
@@ -25,9 +22,7 @@ export function SmsProviderCredentials({ tenantId }: { tenantId?: string }) {
   useEffect(()=>{
     const item=configured.find(value=>value.provider===provider);
     setSecret('');setAccountSid(item?.publicIdentifier??'');setSender(item?.sender??'');
-    setTemplateId(item?.templateId??'');setMessageVariable(item?.messageVariable||'message');
-    setChargingStartedTemplateId(item?.chargingStartedTemplateId??'');
-    setChargingCompletedTemplateId(item?.chargingCompletedTemplateId??'');
+    setFlowTemplates(item?.flowTemplates??[]);
   },[provider,configured]);
   const existing=configured.find(value=>value.provider===provider);
   const save=async()=>{
@@ -36,9 +31,13 @@ export function SmsProviderCredentials({ tenantId }: { tenantId?: string }) {
       setMessage('Enter the Twilio Account SID beginning with AC. An API Key SID beginning with SK is not an Account SID.');
       return;
     }
+    if(provider==='MSG91' && flowTemplates.some(row=>!row.templateKey.trim()||!row.flowId.trim()||!row.messageVariable.trim())){
+      setMessage('Complete the event key, Flow template ID and message variable in every row, or remove empty rows.');
+      return;
+    }
     setBusy(true);setMessage('');
     try{
-      const item=await api.saveSmsProviderCredentials(tenantId,{provider,publicIdentifier:accountSid.trim(),sender:sender.trim(),templateId:templateId.trim(),chargingStartedTemplateId:chargingStartedTemplateId.trim(),chargingCompletedTemplateId:chargingCompletedTemplateId.trim(),messageVariable:messageVariable.trim(),secret:secret.trim()});
+      const item=await api.saveSmsProviderCredentials(tenantId,{provider,publicIdentifier:accountSid.trim(),sender:sender.trim(),templateId:'',chargingStartedTemplateId:'',chargingCompletedTemplateId:'',messageVariable:'message',flowTemplates:provider==='MSG91'?flowTemplates.map(row=>({templateKey:row.templateKey.trim(),flowId:row.flowId.trim(),messageVariable:row.messageVariable.trim()})):[],secret:secret.trim()});
       setConfigured(values=>[...values.filter(value=>value.provider!==provider),item]);setSecret('');
       setMessage(`${provider} credentials saved for this workspace.`);
     }catch(reason){
@@ -53,11 +52,15 @@ export function SmsProviderCredentials({ tenantId }: { tenantId?: string }) {
       <label>Provider<select value={provider} onChange={event=>{setProvider(event.target.value as 'MSG91'|'TWILIO');setMessage('');}}><option value="MSG91">MSG91</option><option value="TWILIO">Twilio</option></select></label>
       <div className="provider-status" role="status">{loading?'Checking configuration…':existing?.secretConfigured?'Key configured · leave key blank to keep it':'No key configured'}</div>
       {provider==='MSG91'?<>
-        <label>General MSG91 Flow template ID<input value={templateId} onChange={event=>setTemplateId(event.target.value)} /></label>
-        <label>Template message variable<input value={messageVariable} onChange={event=>setMessageVariable(event.target.value)} /></label>
-        <label>Charging started Flow template ID<input value={chargingStartedTemplateId} onChange={event=>setChargingStartedTemplateId(event.target.value)} placeholder="Approved start template ID" /></label>
-        <label>Charging completed Flow template ID<input value={chargingCompletedTemplateId} onChange={event=>setChargingCompletedTemplateId(event.target.value)} placeholder="Approved completion template ID" /></label>
-        <p className="full">Use separate approved MSG91 Flow templates for charging start and completion. Leave an event ID blank to keep that event's SMS unavailable.</p>
+        <div className="full"><h3>MSG91 Flow templates</h3><p>Add one row per notification event. The event key selects its approved Flow template; an unconfigured event will not be sent.</p></div>
+        {flowTemplates.map((row,index)=><div className="full sms-template-row" key={index}>
+          <label>Event key<input value={row.templateKey} list="sms-template-events" placeholder="charging-started" onChange={event=>setFlowTemplates(values=>values.map((value,i)=>i===index?{...value,templateKey:event.target.value}:value))} /></label>
+          <label>MSG91 Flow template ID<input value={row.flowId} placeholder="Approved Flow ID" onChange={event=>setFlowTemplates(values=>values.map((value,i)=>i===index?{...value,flowId:event.target.value}:value))} /></label>
+          <label>Message variable<input value={row.messageVariable} placeholder="message" onChange={event=>setFlowTemplates(values=>values.map((value,i)=>i===index?{...value,messageVariable:event.target.value}:value))} /></label>
+          <button type="button" className="secondary" aria-label={`Remove template ${row.templateKey||index+1}`} onClick={()=>setFlowTemplates(values=>values.filter((_,i)=>i!==index))}>Remove</button>
+        </div>)}
+        <datalist id="sms-template-events"><option value="general"/><option value="charging-started"/><option value="charging-completed"/><option value="charging-payment-due"/></datalist>
+        <div className="full"><button type="button" className="secondary" onClick={()=>setFlowTemplates(values=>[...values,{templateKey:'',flowId:'',messageVariable:'message'}])}>+ Add template</button></div>
         <label className="full">MSG91 auth key<input type="password" value={secret} onChange={event=>setSecret(event.target.value)} placeholder={existing?.secretConfigured?'Leave blank to keep saved key':'Enter MSG91 auth key'} autoComplete="new-password" /></label>
       </>:<>
         <label>Twilio account SID (starts AC)<input value={accountSid} onChange={event=>setAccountSid(event.target.value)} /></label>

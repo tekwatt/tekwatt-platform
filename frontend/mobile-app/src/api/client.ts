@@ -1,4 +1,4 @@
-import type { Charger, ChargingSession, Connector, Invoice, Payment, RegistrationInput, Reservation, RfidCard, SupportTicket, Tenant, TicketComment, TicketDetail, TokenResponse, UserProfile, UserSession, Wallet, WalletEntry } from '../types';
+import type { Charger, ChargingSession, Connector, Invoice, Payment, RazorpayOrder, RegistrationInput, Reservation, RfidCard, SupportTicket, Tenant, TicketComment, TicketDetail, TokenResponse, UserProfile, UserSession, Wallet, WalletEntry } from '../types';
 
 export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://10.0.2.2:8080').replace(/\/$/, '');
 
@@ -83,6 +83,9 @@ export const api = {
   walletEntries: (walletId:string,token:string)=>request<WalletEntry[]>(`/api/v1/payments/operations/wallets/${walletId}/entries`,{token}),
   payments: (tenantId: string, token: string) => request<Payment[]>(`/api/v1/payments?tenantId=${encodeURIComponent(tenantId)}`, { token }),
   invoices: (tenantId:string,token:string)=>request<Invoice[]>(`/api/v1/invoices?tenantId=${encodeURIComponent(tenantId)}`,{token}),
+  createRazorpayOrder: (body:{tenantId:string;userId:string;billId:string;invoiceId:string;idempotencyKey:string;amount:number;currency:string;description:string},token:string)=>request<RazorpayOrder>('/api/v1/payments/razorpay/orders',{method:'POST',token,body:JSON.stringify(body)}),
+  verifyRazorpayPayment: (body:{paymentId:string;razorpayPaymentId:string;razorpayOrderId:string;razorpaySignature:string},token:string)=>request<Payment>('/api/v1/payments/razorpay/verify',{method:'POST',token,body:JSON.stringify(body)}),
+  markInvoicePaid: (invoiceId:string,token:string)=>request<Invoice>(`/api/v1/invoices/${invoiceId}/pay`,{method:'POST',token}),
   tickets: (tenantId: string, token: string) => request<SupportTicket[]>(`/api/v1/support/tickets?tenantId=${encodeURIComponent(tenantId)}`, { token }),
   ticket: (id:string,token:string)=>request<TicketDetail>(`/api/v1/support/tickets/${id}`,{token}),
   createTicket: (body: Record<string, unknown>, token: string) => request<SupportTicket>('/api/v1/support/tickets', { method: 'POST', token, body: JSON.stringify(body) }),

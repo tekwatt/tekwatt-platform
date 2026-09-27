@@ -30,17 +30,22 @@ export function ProviderControls({settings,tenantId,mapProvider,smsProvider,choo
   const custom=mapProviders(settings);
   const twilioAdded=settings.smsProviders?.includes('TWILIO')||smsProvider==='TWILIO';
   const maptilerAdded=settings.mapProviders?.includes('MAPTILER')||mapProvider==='MAPTILER';
+  const googleAdded=Boolean(settings.googleMapsBrowserKey)||mapProvider==='GOOGLE';
   let admin=false;
   try { admin=JSON.parse(sessionStorage.getItem('tekwatt-login-identity')??'null')?.role==='ADMIN'; } catch { /* No active admin identity. */ }
   const add=async()=>{
     if(!tenantId||busy||!kind)return;
     if(kind==='CUSTOM_MAP'&&(!name.trim()||!validTileUrl(tileUrl))){setMessage('Enter a provider name and HTTPS tile URL containing {z}, {x} and {y}.');return;}
     if(kind==='MAPTILER'&&!key.trim()){setMessage('Enter your public MapTiler browser key.');return;}
+    if(kind==='GOOGLE'&&!key.trim()){setMessage('Enter your Google Maps JavaScript browser key.');return;}
     setBusy(true);setMessage('');
     try{
       if(kind==='TWILIO'){
         await api.saveGovernanceSettings(tenantId,{smsProviders:JSON.stringify(['MSG91','TWILIO']),smsProvider:'TWILIO'});
         chooseSms('TWILIO');
+      }else if(kind==='GOOGLE'){
+        await api.saveGovernanceSettings(tenantId,{mapProvider:'GOOGLE',googleMapsBrowserKey:key.trim()});
+        chooseMap('GOOGLE');
       }else if(kind==='MAPTILER'){
         await api.saveGovernanceSettings(tenantId,{mapProviders:JSON.stringify([...custom.filter(item=>item.id!=='MAPTILER'),{id:'MAPTILER',name:'MapTiler',tileUrl:''}]),mapProvider:'MAPTILER',maptilerKey:key.trim()});
         chooseMap('MAPTILER');
@@ -66,9 +71,9 @@ export function ProviderControls({settings,tenantId,mapProvider,smsProvider,choo
     }finally{setSmsBusy(false);}
   };
   return <>
-    <label>Map provider<select value={mapProvider} onChange={event=>chooseMap(event.target.value)}><option value="OPENSTREETMAP">OpenStreetMap</option>{maptilerAdded&&<option value="MAPTILER">MapTiler</option>}{custom.filter(item=>item.id!=='MAPTILER').map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+    <label>Map provider<select value={mapProvider} onChange={event=>chooseMap(event.target.value)}><option value="OPENSTREETMAP">OpenStreetMap</option>{googleAdded&&<option value="GOOGLE">Google Maps</option>}{maptilerAdded&&<option value="MAPTILER">MapTiler</option>}{custom.filter(item=>item.id!=='MAPTILER').map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><small>After selecting Google Maps, save General settings below.</small></label>
     <label>SMS provider<select value={smsProvider} disabled={!tenantId||smsBusy} onChange={event=>void selectSms(event.target.value)}><option value="MSG91">MSG91</option>{twilioAdded&&<option value="TWILIO">Twilio</option>}</select><small>Changing this selection saves it immediately. Sender credentials stay on the notification server.</small>{smsMessage&&<small role="status" className={smsMessage.includes('active SMS provider')?'success-message':smsMessage.startsWith('Saving')?'':'form-error'}>{smsMessage}</small>}</label>
-    <div className="provider-add full"><strong>Add provider</strong><div className="provider-fields"><select aria-label="Provider to add" value={kind} onChange={event=>setKind(event.target.value)}><option value="">Choose provider</option><option value="MAPTILER">MapTiler map</option><option value="CUSTOM_MAP">Custom map tiles</option><option value="TWILIO">Twilio SMS</option></select>{kind==='MAPTILER'&&<input aria-label="MapTiler public key" placeholder="MapTiler public browser key" value={key} onChange={event=>setKey(event.target.value)}/>}{kind==='CUSTOM_MAP'&&<><input aria-label="Map provider name" placeholder="Provider name" value={name} onChange={event=>setName(event.target.value)}/><input aria-label="Map tile URL" placeholder="https://tiles.example.com/{z}/{x}/{y}.png" value={tileUrl} onChange={event=>setTileUrl(event.target.value)}/></>}<button type="button" className="secondary" disabled={!kind||busy} onClick={()=>void add()}>{busy?'Adding…':'Add provider'}</button></div>{kind==='TWILIO'&&<small>Enter the Twilio account SID, sender and auth token in the administrator credentials form below.</small>}{message&&<small role="status" className={message.includes('added')?'success-message':'form-error'}>{message}</small>}</div>
+    <div className="provider-add full"><strong>Add provider</strong><div className="provider-fields"><select aria-label="Provider to add" value={kind} onChange={event=>setKind(event.target.value)}><option value="">Choose provider</option><option value="GOOGLE">Google Maps</option><option value="MAPTILER">MapTiler map</option><option value="CUSTOM_MAP">Custom map tiles</option><option value="TWILIO">Twilio SMS</option></select>{(kind==='MAPTILER'||kind==='GOOGLE')&&<input aria-label={kind==='GOOGLE'?'Google Maps browser key':'MapTiler public key'} placeholder={kind==='GOOGLE'?'Google Maps JavaScript browser key':'MapTiler public browser key'} value={key} onChange={event=>setKey(event.target.value)}/>}{kind==='CUSTOM_MAP'&&<><input aria-label="Map provider name" placeholder="Provider name" value={name} onChange={event=>setName(event.target.value)}/><input aria-label="Map tile URL" placeholder="https://tiles.example.com/{z}/{x}/{y}.png" value={tileUrl} onChange={event=>setTileUrl(event.target.value)}/></>}<button type="button" className="secondary" disabled={!kind||busy} onClick={()=>void add()}>{busy?'Adding…':'Add provider'}</button></div>{kind==='GOOGLE'&&<small>Use a browser key restricted to your TekWatt website origin and Maps JavaScript API. Google Maps billing must be enabled.</small>}{kind==='TWILIO'&&<small>Enter the Twilio account SID, sender and auth token in the administrator credentials form below.</small>}{message&&<small role="status" className={message.includes('added')?'success-message':'form-error'}>{message}</small>}</div>
     {admin&&<SmsProviderCredentials tenantId={tenantId}/>}
   </>;
 }

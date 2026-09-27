@@ -14,7 +14,8 @@ export type RazorpayVerification = { paymentId:string;razorpayPaymentId:string;r
 export type UserProfile = { id: string; authUserId?:string; tenantId?:string; firstName?: string; lastName?: string; fullName?:string; email: string; phone?:string; city?:string; zipcode?:string; status?: string; createdAt?:string; updatedAt?:string };
 export type Report = { id: string; type?: string; fileName?: string; status?: string; createdAt?: string };
 export type Notification = { id: string; channel: string; recipient: string; subject?: string; body: string; status: string; providerMessageId?:string;lastError?:string;attemptCount?:number;maxAttempts?:number;createdAt?: string };
-export type SmsProviderCredential={provider:'MSG91'|'TWILIO';secretConfigured:boolean;publicIdentifier:string;sender:string;templateId:string;chargingStartedTemplateId:string;chargingCompletedTemplateId:string;messageVariable:string;updatedAt:string};
+export type SmsFlowTemplate={templateKey:string;flowId:string;messageVariable:string};
+export type SmsProviderCredential={provider:'MSG91'|'TWILIO';secretConfigured:boolean;publicIdentifier:string;sender:string;templateId:string;chargingStartedTemplateId:string;chargingCompletedTemplateId:string;messageVariable:string;flowTemplates:SmsFlowTemplate[];updatedAt:string};
 export type Connector = { id: string; tenantId: string; chargerId: string; connectorNumber: number; type: string; maxPowerKw: number; maxVoltage: number; maxCurrent: number; status: string };
 export type OcppConnection = { stationId: string; connected: boolean; connectedAt?: string; protocol?: string };
 export type OcppMessage = { id: string; stationId: string; direction: string; messageType: number; uniqueId: string; action?: string; payload: string; createdAt: string };
@@ -264,7 +265,7 @@ export const api = {
   governanceSettings:(tenantId:string)=>request<Record<string,string>>(`/api/v1/admin/governance/settings?tenantId=${encodeURIComponent(tenantId)}`),
   saveGovernanceSettings:(tenantId:string,body:Record<string,string>)=>request<Record<string,string>>(`/api/v1/admin/governance/settings?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
   smsProviderCredentials:(tenantId:string)=>request<SmsProviderCredential[]>(`/api/v1/notifications/provider-credentials?tenantId=${encodeURIComponent(tenantId)}`),
-  saveSmsProviderCredentials:(tenantId:string,body:{provider:'MSG91'|'TWILIO';publicIdentifier:string;sender:string;templateId:string;chargingStartedTemplateId:string;chargingCompletedTemplateId:string;messageVariable:string;secret:string})=>request<SmsProviderCredential>(`/api/v1/notifications/provider-credentials?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
+  saveSmsProviderCredentials:(tenantId:string,body:{provider:'MSG91'|'TWILIO';publicIdentifier:string;sender:string;templateId:string;chargingStartedTemplateId:string;chargingCompletedTemplateId:string;messageVariable:string;flowTemplates:SmsFlowTemplate[];secret:string})=>request<SmsProviderCredential>(`/api/v1/notifications/provider-credentials?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
   tariffAssignments:(tenantId:string)=>request<TariffAssignment[]>(`/api/v1/tariffs/assignments?tenantId=${encodeURIComponent(tenantId)}`),
   assignTariff:(tariffId:string,tenantId:string,chargerId:string)=>request<TariffAssignment>(`/api/v1/tariffs/${tariffId}/assignments`,{method:'POST',body:JSON.stringify({tenantId,chargerId})}),
   unassignTariff:(tenantId:string,chargerId:string)=>request<void>(`/api/v1/tariffs/assignments?tenantId=${encodeURIComponent(tenantId)}&chargerId=${encodeURIComponent(chargerId)}`,{method:'DELETE'}),

@@ -20,6 +20,7 @@ public class SmsProviderCredential {
     @Column(length = 200) private String chargingStartedTemplateId;
     @Column(length = 200) private String chargingCompletedTemplateId;
     @Column(length = 100) private String messageVariable;
+    @Column(columnDefinition = "TEXT") private String flowTemplatesJson;
     @Column(nullable = false, columnDefinition = "TEXT") private String encryptedSecret;
     @Column(nullable = false) private Instant updatedAt;
 
@@ -28,13 +29,14 @@ public class SmsProviderCredential {
         this.id = UUID.randomUUID(); this.tenantId = tenantId; this.provider = provider;
     }
     public void update(String publicIdentifier, String sender, String templateId, String chargingStartedTemplateId,
-            String chargingCompletedTemplateId, String messageVariable, String encryptedSecret) {
+            String chargingCompletedTemplateId, String messageVariable, String flowTemplatesJson, String encryptedSecret) {
         this.publicIdentifier = publicIdentifier;
         this.sender = sender;
         this.templateId = templateId;
         this.chargingStartedTemplateId = chargingStartedTemplateId;
         this.chargingCompletedTemplateId = chargingCompletedTemplateId;
         this.messageVariable = messageVariable;
+        this.flowTemplatesJson = flowTemplatesJson;
         this.encryptedSecret = encryptedSecret;
         this.updatedAt = Instant.now();
     }
@@ -45,6 +47,7 @@ public class SmsProviderCredential {
     public String getChargingStartedTemplateId() { return chargingStartedTemplateId; }
     public String getChargingCompletedTemplateId() { return chargingCompletedTemplateId; }
     public String getMessageVariable() { return messageVariable; }
+    public String getFlowTemplatesJson() { return flowTemplatesJson; }
     public String getEncryptedSecret() { return encryptedSecret; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

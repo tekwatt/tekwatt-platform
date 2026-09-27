@@ -30,11 +30,13 @@ public class SmsProviderRouter {
         String provider=selected==null?"MSG91":String.valueOf(selected);
         var saved=credentials.credentials(tenantId,provider);
         return switch(provider){
-            case "MSG91" -> saved.map(value->msg91.send(recipient,body,value.secret(),
-                    templateFor(value, templateKey),value.messageVariable()))
+            case "MSG91" -> saved.map(value->{
+                        var template = templateFor(value, templateKey);
+                        return msg91.send(recipient,body,value.secret(),template.flowId(),template.messageVariable());
+                    })
                     .orElseGet(()->{
-                        if (isChargingLifecycle(templateKey))
-                            throw new Msg91SmsClient.SmsDeliveryException("An approved MSG91 charging template is not configured for this workspace.");
+                        if (templateKey != null && !templateKey.isBlank())
+                            throw new Msg91SmsClient.SmsDeliveryException("An approved MSG91 template is not configured for this event.");
                         return msg91.send(recipient,body);
                     });
             case "TWILIO" -> saved.map(value->twilio.send(recipient,body,value.publicIdentifier(),value.secret(),value.sender()))
@@ -42,17 +44,10 @@ public class SmsProviderRouter {
             default -> throw new Msg91SmsClient.SmsDeliveryException("Unsupported SMS provider configured for this workspace.");
         };
     }
-    private boolean isChargingLifecycle(String templateKey) {
-        return "charging-started".equals(templateKey) || "charging-completed".equals(templateKey);
-    }
-    private String templateFor(SmsProviderCredentialService.Credentials value, String templateKey) {
-        if (isChargingLifecycle(templateKey)) {
-            String template = "charging-started".equals(templateKey)
-                    ? value.chargingStartedTemplateId() : value.chargingCompletedTemplateId();
-            if (template == null || template.isBlank())
-                throw new Msg91SmsClient.SmsDeliveryException("An approved MSG91 template for this charging event is not configured.");
-            return template;
-        }
-        return value.templateId();
+    private SmsProviderCredentialService.FlowTemplate templateFor(SmsProviderCredentialService.Credentials value, String templateKey) {
+        String key = templateKey == null || templateKey.isBlank() ? "general" : templateKey;
+        return value.flowTemplates().stream().filter(row -> key.equals(row.templateKey())).findFirst()
+                .orElseThrow(() -> new Msg91SmsClient.SmsDeliveryException(
+                        "An approved MSG91 Flow template is not configured for event " + key + "."));
     }
 }

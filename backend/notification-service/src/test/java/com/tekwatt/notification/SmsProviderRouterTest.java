@@ -25,7 +25,8 @@ class SmsProviderRouterTest {
         server.expect(requestTo("http://admin/api/v1/admin/governance/settings?tenantId="+tenant))
                 .andRespond(withSuccess("{\"smsProvider\":\"MSG91\"}",MediaType.APPLICATION_JSON));
         when(credentials.credentials(tenant,"MSG91")).thenReturn(Optional.of(
-                new SmsProviderCredentialService.Credentials("","","flow-1","start-flow","complete-flow","message","saved-key")));
+                new SmsProviderCredentialService.Credentials("","","flow-1","start-flow","complete-flow","message",
+                        java.util.List.of(new SmsProviderCredentialService.FlowTemplate("general","flow-1","message")),"saved-key")));
         when(msg91.send("+919876543210","Payment due","saved-key","flow-1","message")).thenReturn("REQUEST-1");
         var router=new SmsProviderRouter(msg91,twilio,credentials,builder,"http://admin");
         assertThat(router.send(tenant,"+919876543210","Payment due")).isEqualTo("REQUEST-1");
@@ -53,7 +54,8 @@ class SmsProviderRouterTest {
         server.expect(requestTo("http://admin/api/v1/admin/governance/settings?tenantId="+tenant))
                 .andRespond(withSuccess("{\"smsProvider\":\"MSG91\"}",MediaType.APPLICATION_JSON));
         when(credentials.credentials(tenant,"MSG91")).thenReturn(Optional.of(
-                new SmsProviderCredentialService.Credentials("","","general-flow","start-flow","complete-flow","message","saved-key")));
+                new SmsProviderCredentialService.Credentials("","","general-flow","start-flow","complete-flow","message",
+                        java.util.List.of(new SmsProviderCredentialService.FlowTemplate("charging-started","start-flow","message")),"saved-key")));
         when(msg91.send("+919876543210","Started","saved-key","start-flow","message")).thenReturn("REQUEST-2");
         var router=new SmsProviderRouter(msg91,twilio,credentials,builder,"http://admin");
         assertThat(router.send(tenant,"+919876543210","Started","charging-started")).isEqualTo("REQUEST-2");
@@ -68,7 +70,8 @@ class SmsProviderRouterTest {
         server.expect(requestTo("http://admin/api/v1/admin/governance/settings?tenantId="+tenant))
                 .andRespond(withSuccess("{\"smsProvider\":\"MSG91\"}",MediaType.APPLICATION_JSON));
         when(credentials.credentials(tenant,"MSG91")).thenReturn(Optional.of(
-                new SmsProviderCredentialService.Credentials("","","general-flow","start-flow","","message","saved-key")));
+                new SmsProviderCredentialService.Credentials("","","general-flow","start-flow","","message",
+                        java.util.List.of(new SmsProviderCredentialService.FlowTemplate("charging-started","start-flow","message")),"saved-key")));
         var router=new SmsProviderRouter(msg91,twilio,credentials,builder,"http://admin");
         assertThatThrownBy(()->router.send(tenant,"+919876543210","Completed","charging-completed"))
                 .isInstanceOf(Msg91SmsClient.SmsDeliveryException.class);
