@@ -3,17 +3,32 @@ package com.tekwatt.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.tekwatt.auth.entity.AppUser;
+import com.tekwatt.auth.repository.AppUserRepository;
+import com.tekwatt.auth.repository.SmtpSettingsRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.*;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.mockito.ArgumentCaptor;
+import static org.mockito.Mockito.verify;
 import java.util.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestPropertySource(properties={"spring.mail.host=localhost","tekwatt.auth.reset-from=no-reply@tekwatt.in","management.health.mail.enabled=false","tekwatt.auth.smtp-encryption-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="})
 class AuthServiceApplicationTests {
     @Autowired TestRestTemplate http;
+    @MockBean JavaMailSender mailSender;
+    @Autowired AppUserRepository users;
+    @Autowired SmtpSettingsRepository smtpSettings;
+    @Autowired PasswordEncoder passwordEncoder;
 
     @Test void contextLoads() { }
 
@@ -25,6 +40,7 @@ class AuthServiceApplicationTests {
         assertThat(document).isNotNull();
         assertThat(document.path("info").path("title").asText()).isEqualTo("Auth Service API");
         assertThat(document.path("paths").has("/api/v1/auth/login")).isTrue();
+        assertThat(document.path("paths").has("/api/v1/auth/smtp-settings")).isTrue();
         assertThat(document.path("components").path("securitySchemes").path("bearerAuth")
                 .path("scheme").asText()).isEqualTo("bearer");
     }
@@ -39,5 +55,72 @@ class AuthServiceApplicationTests {
         assertThat(sessions.getStatusCode()).isEqualTo(HttpStatus.OK);assertThat(sessions.getBody().isArray()).isTrue();assertThat(sessions.getBody().size()).isEqualTo(1);assertThat(sessions.getBody().get(0).path("current").asBoolean()).isTrue();
         assertThat(http.postForEntity("/api/v1/auth/logout",Map.of("refreshToken",refresh),Void.class).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(http.exchange("/api/v1/auth/sessions",HttpMethod.GET,new HttpEntity<>(headers),JsonNode.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void resetsPasswordWithSingleUseEmailCodeAndRevokesSessions() {
+        String email="reset-"+UUID.randomUUID()+"@tekwatt.in";
+        ResponseEntity<JsonNode> registered=http.postForEntity("/api/v1/auth/register",Map.of("email",email,"password","OldPassword@123"),JsonNode.class);
+        assertThat(registered.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        String access=registered.getBody().path("accessToken").asText();
+        assertThat(http.postForEntity("/api/v1/auth/password-reset/request",Map.of("email",email),Void.class).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        ArgumentCaptor<SimpleMailMessage> sent=ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(sent.capture());
+        String body=sent.getValue().getText();
+        assertThat(body).isNotNull();
+        var matcher=java.util.regex.Pattern.compile("\\b[0-9]{8}\\b").matcher(body);
+        assertThat(matcher.find()).isTrue();
+        String code=matcher.group();
+        assertThat(http.postForEntity("/api/v1/auth/password-reset/confirm",Map.of("email",email,"code","00000000","newPassword","NewPassword@123"),Void.class).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(http.postForEntity("/api/v1/auth/password-reset/confirm",Map.of("email",email,"code",code,"newPassword","NewPassword@123"),Void.class).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(http.postForEntity("/api/v1/auth/password-reset/confirm",Map.of("email",email,"code",code,"newPassword","OtherPassword@123"),Void.class).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(http.postForEntity("/api/v1/auth/login",Map.of("email",email,"password","OldPassword@123"),JsonNode.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(http.postForEntity("/api/v1/auth/login",Map.of("email",email,"password","NewPassword@123"),JsonNode.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+        HttpHeaders headers=new HttpHeaders();headers.setBearerAuth(access);
+        assertThat(http.exchange("/api/v1/auth/sessions",HttpMethod.GET,new HttpEntity<>(headers),JsonNode.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void resetRequestDoesNotRevealAccountsAndFiveWrongCodesLockTheCode() {
+        String email="locked-"+UUID.randomUUID()+"@tekwatt.in";
+        assertThat(http.postForEntity("/api/v1/auth/password-reset/request",Map.of("email",email),Void.class).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(http.postForEntity("/api/v1/auth/register",Map.of("email",email,"password","OldPassword@123"),JsonNode.class).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(http.postForEntity("/api/v1/auth/password-reset/request",Map.of("email",email),Void.class).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        ArgumentCaptor<SimpleMailMessage> sent=ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(sent.capture());
+        var matcher=java.util.regex.Pattern.compile("\\b[0-9]{8}\\b").matcher(sent.getValue().getText());
+        assertThat(matcher.find()).isTrue();
+        String correctCode=matcher.group();
+        String wrongCode=correctCode.equals("00000000")?"99999999":"00000000";
+        for(int attempt=0;attempt<5;attempt++) {
+            assertThat(http.postForEntity("/api/v1/auth/password-reset/confirm",Map.of("email",email,"code",wrongCode,"newPassword","NewPassword@123"),Void.class).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+        assertThat(http.postForEntity("/api/v1/auth/password-reset/confirm",Map.of("email",email,"code",correctCode,"newPassword","NewPassword@123"),Void.class).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void onlyAdministratorCanStoreEncryptedSmtpCredentials() {
+        String email="smtp-admin-"+UUID.randomUUID()+"@tekwatt.in";
+        users.save(new AppUser(email,passwordEncoder.encode("AdminPassword@123"),"ADMIN"));
+        ResponseEntity<JsonNode> login=http.postForEntity("/api/v1/auth/login",Map.of("email",email,"password","AdminPassword@123"),JsonNode.class);
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+        HttpHeaders headers=new HttpHeaders();headers.setBearerAuth(login.getBody().path("accessToken").asText());
+        UUID tenantId=UUID.randomUUID();
+        String uri="/api/v1/auth/smtp-settings?tenantId="+tenantId;
+        Map<String,Object> body=Map.of("host","smtp.example.com","port",587,"securityMode","STARTTLS",
+                "username","mailer@example.com","password","super-secret-app-password",
+                "fromEmail","no-reply@example.com","replyTo","help@example.com");
+        String customerEmail="smtp-customer-"+UUID.randomUUID()+"@tekwatt.in";
+        ResponseEntity<JsonNode> customer=http.postForEntity("/api/v1/auth/register",Map.of("email",customerEmail,"password","CustomerPass@123"),JsonNode.class);
+        HttpHeaders customerHeaders=new HttpHeaders();customerHeaders.setBearerAuth(customer.getBody().path("accessToken").asText());
+        assertThat(http.exchange(uri,HttpMethod.PUT,new HttpEntity<>(body,customerHeaders),JsonNode.class).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        try {
+            ResponseEntity<JsonNode> saved=http.exchange(uri,HttpMethod.PUT,new HttpEntity<>(body,headers),JsonNode.class);
+            assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(saved.getBody().path("passwordConfigured").asBoolean()).isTrue();
+            assertThat(saved.getBody().toString()).doesNotContain("super-secret-app-password");
+            assertThat(smtpSettings.findById(1).orElseThrow().getEncryptedPassword()).doesNotContain("super-secret-app-password");
+            assertThat(http.exchange(uri,HttpMethod.GET,new HttpEntity<>(headers),JsonNode.class).getBody().path("host").asText()).isEqualTo("smtp.example.com");
+        } finally { smtpSettings.deleteAll(); }
     }
 }

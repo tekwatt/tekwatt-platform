@@ -48,6 +48,7 @@ export type OcpiConfiguration={tenantId?:string;countryCode?:string;partyId?:str
 export type OcpiPartner={id:number;partnerName:string;countryCode:string;partyId:string;versionsUrl:string;rolesJson?:string;status:string;enabled:boolean;createdAt:string;updatedAt:string};
 export type OcpiSummary={partners:number;tokens:number;cdrs:number;commands:number};
 export type OcpiCredentials={data:{token:string;url:string;roles:unknown[]};status_code:number;timestamp:string};
+export type SmtpSettingsSummary={configured:boolean;source:'DATABASE'|'ENVIRONMENT'|'NONE';host:string;port:number;securityMode:string;username:string;fromEmail:string;replyTo:string|null;passwordConfigured:boolean;updatedAt:string|null};
 
 class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -154,6 +155,11 @@ export const api = {
   realtimeUrl: (tenantId: string) => `${API_BASE}/api/v1/admin/events?tenantId=${encodeURIComponent(tenantId)}`,
   login: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  requestPasswordReset: (email: string) => request<void>('/api/v1/auth/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) }),
+  confirmPasswordReset: (email: string, code: string, newPassword: string) => request<void>('/api/v1/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify({ email, code, newPassword }) }),
+  smtpSettings: (tenantId:string)=>request<SmtpSettingsSummary>(`/api/v1/auth/smtp-settings?tenantId=${encodeURIComponent(tenantId)}`),
+  saveSmtpSettings: (tenantId:string,body:{host:string;port:number;securityMode:'STARTTLS'|'SSL';username:string;password:string;fromEmail:string;replyTo:string})=>request<SmtpSettingsSummary>(`/api/v1/auth/smtp-settings?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
+  testSmtpSettings: (tenantId:string)=>request<void>(`/api/v1/auth/smtp-settings/test?tenantId=${encodeURIComponent(tenantId)}`,{method:'POST'}),
   logout: (refreshToken:string) => request<void>('/api/v1/auth/logout',{method:'POST',body:JSON.stringify({refreshToken})}),
   userSessions: () => request<UserSession[]>('/api/v1/auth/sessions'),
   revokeUserSession: (id:string) => request<void>(`/api/v1/auth/sessions/${id}`,{method:'DELETE'}),

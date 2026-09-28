@@ -7,6 +7,7 @@ import { InvoiceAdminPage } from './InvoiceAdminPage';
 import { ManagedTables } from './ManagedTables';
 import { GoogleStationMap } from './GoogleStationMap';
 import { ProviderControls, tileFor } from './ProviderControls';
+import { SmtpSettingsPanel } from './SmtpSettingsPanel';
 import {
   Activity, Bell, Bolt, Building2, ChevronDown, CircleAlert, IndianRupee,
   CreditCard, FileBarChart, Gauge, Headphones, LayoutDashboard, LogOut,
@@ -146,11 +147,25 @@ function ErrorAlert({ title, message }: { title: string; message: string }) {
 function Login({ onLogin, onDemo }: { onLogin: (email: string, password: string, register: boolean) => Promise<void>; onDemo: () => void }) {
   const [email, setEmail] = useState('admin@tekwatt.in');
   const [password, setPassword] = useState('');
+  const [mode,setMode]=useState<'login'|'request-reset'|'confirm-reset'>('login');
+  const [resetCode,setResetCode]=useState('');
+  const [notice,setNotice]=useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(()=>{const notice=sessionStorage.getItem('tekwatt-auth-notice')??'';sessionStorage.removeItem('tekwatt-auth-notice');return notice;});
   const submit = async (event: FormEvent, register = false) => {
     event.preventDefault(); setLoading(true); setError('');
-    try { await onLogin(email, password, register); }
+    try {
+      if(mode==='request-reset'){
+        await api.requestPasswordReset(email.trim());
+        setNotice('If this account exists, a reset code has been emailed. Check your inbox and spam folder.');
+        setMode('confirm-reset');
+      } else if(mode==='confirm-reset'){
+        if(password.length<12)throw new Error('Choose a password of at least 12 characters.');
+        await api.confirmPasswordReset(email.trim(),resetCode.trim(),password);
+        setNotice('Password updated. Sign in with your new password.');
+        setPassword('');setResetCode('');setMode('login');
+      } else await onLogin(email, password, register);
+    }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to sign in'); }
     finally { setLoading(false); }
   };
@@ -167,16 +182,16 @@ function Login({ onLogin, onDemo }: { onLogin: (email: string, password: string,
     <section className="login-panel">
       <form className="login-card" onSubmit={submit}>
         <div className="mobile-brand"><Brand /></div>
-        <span className="eyebrow">WELCOME BACK</span>
-        <h2>Sign in to Nexus</h2>
-        <p>Enter your customer, partner, technician, or administrator credentials.</p>
-        <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
-        <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Your backend account password" /></label>
-        {error && <ErrorAlert title="Sign-in unsuccessful" message={error} />}
-        <button className="primary wide" type="submit" disabled={loading}>{loading ? 'Connecting…' : 'Sign in'} <Bolt size={18} /></button>
-        <button className="secondary wide" type="button" disabled={loading || password.length < 12} onClick={event => submit(event, true)}>Create first account</button>
-        <button className="demo-link" type="button" onClick={onDemo}>Explore with demo data</button>
-        <small>Account creation requires a password of at least 12 characters.</small>
+        <span className="eyebrow">{mode==='login'?'WELCOME BACK':'ACCOUNT RECOVERY'}</span>
+        <h2>{mode==='login'?'Sign in to Nexus':mode==='request-reset'?'Reset your password':'Enter your reset code'}</h2>
+        <p>{mode==='login'?'Enter your customer, partner, technician, or administrator credentials.':mode==='request-reset'?'We will email a one-time code to your account address.':'The code expires in 10 minutes. Choose a new password to continue.'}</p>
+        <label>Email address<input type="email" value={email} required onChange={e => setEmail(e.target.value)} /></label>
+        {mode==='confirm-reset'&&<label>8-digit code<input inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={resetCode} onChange={e=>setResetCode(e.target.value.replace(/\D/g,''))}/></label>}
+        {mode!=='request-reset'&&<label>{mode==='login'?'Password':'New password'}<input type="password" minLength={mode==='confirm-reset'?12:undefined} value={password} onChange={e => setPassword(e.target.value)} placeholder={mode==='login'?'Your backend account password':'At least 12 characters'} /></label>}
+        {notice&&<p role="status">{notice}</p>}
+        {error && <ErrorAlert title={mode==='login'?'Sign-in unsuccessful':'Password reset unsuccessful'} message={error} />}
+        <button className="primary wide" type="submit" disabled={loading}>{loading?'Please wait…':mode==='login'?'Sign in':mode==='request-reset'?'Email reset code':'Update password'} <Bolt size={18} /></button>
+        {mode==='login'?<><button className="demo-link" type="button" onClick={()=>{setMode('request-reset');setError('');setNotice('');setPassword('');}}>Forgot password?</button><button className="secondary wide" type="button" disabled={loading || password.length < 12} onClick={event => submit(event, true)}>Create first account</button><button className="demo-link" type="button" onClick={onDemo}>Explore with demo data</button><small>Account creation requires a password of at least 12 characters.</small></>:<button className="demo-link" type="button" onClick={()=>{setMode('login');setError('');setNotice('');setPassword('');}}>Back to sign in</button>}
       </form>
     </section>
   </main>;
@@ -809,7 +824,7 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
     if (page === 'Roles') return <RolesPage data={data} refresh={refresh}/>;
     if (page === 'Admins') return <><Subnav items={allowedScreens('Admins')} active={adminView} select={view=>navigateTo('Admins',view)}/>{adminView==='API Keys'?<ApiKeysPage data={data} refresh={refresh}/>:adminView==='Install Modules'?<InstallModulesPage data={data} refresh={refresh}/>:<AdministratorsPage data={data} refresh={refresh} identity={identity}/>}</>;
     if (page === 'Network Partners') return <NetworkPartnersPage data={data} refresh={refresh}/>;
-    return <><Subnav items={allowedScreens('Settings')} active={settingsView} select={view=>navigateTo('Settings',view)}/>{settingsView==='Pricing Configuration'?<TariffManagementPage data={data} refresh={refresh}/>:settingsView==='Email & Newsletter'?<EmailNewsletterPage data={data} refresh={refresh}/>:settingsView==='OCPP Schemas'?<OcppSchemasPage data={data} refresh={refresh}/>:settingsView==='Account Settings'?<SettingsPage data={data} refresh={refresh}/>:<GeneralSettingsPage data={data} refresh={refresh}/>}</>;
+    return <><Subnav items={allowedScreens('Settings')} active={settingsView} select={view=>navigateTo('Settings',view)}/>{settingsView==='Pricing Configuration'?<TariffManagementPage data={data} refresh={refresh}/>:settingsView==='Email & Newsletter'?<EmailNewsletterPage data={data} refresh={refresh}/>:settingsView==='OCPP Schemas'?<OcppSchemasPage data={data} refresh={refresh}/>:settingsView==='Account Settings'?<SettingsPage data={data} refresh={refresh}/>:<><GeneralSettingsPage data={data} refresh={refresh}/>{identity.role==='ADMIN'&&!demo&&<SmtpSettingsPanel tenantId={data.tenant?.id}/>}</>}</>;
   }, [page, data, demo, identity, permissions, enabledPermissions, stationView, sessionView, reportView, paymentView, userView, managerView, contentView, supportView, adminView, settingsView]);
   const availableWorkspaces=demo?[{id:'demo',name:'TekWatt Demo',slug:'tekwatt-demo',contactEmail:'demo@tekwatt.in',status:'ACTIVE'} as Tenant]:tenants;
   const pageBody=<>{page==='Dashboard'&&enabledPermissions.has('Invoices')&&<DashboardPayments invoices={data.invoices} payments={data.payments} open={()=>navigateTo('Payments','Invoices')}/>} {renderedPage}</>;

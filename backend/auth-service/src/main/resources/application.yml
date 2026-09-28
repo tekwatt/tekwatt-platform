@@ -11,9 +11,25 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.ssl.checkserveridentity: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
 server:
   port: ${SERVER_PORT:8081}
 management:
+  health:
+    mail:
+      enabled: false
   endpoint:
     health:
       probes:
@@ -23,7 +39,12 @@ management:
       exposure:
         include: health,info
 tekwatt:
+  services:
+    admin: ${ADMIN_SERVICE_URL:http://localhost:8100}
   auth:
+    reset-from: ${SMTP_FROM:}
+    smtp-encryption-key: ${SMTP_CREDENTIALS_ENCRYPTION_KEY:}
+    smtp-admin-emails: ${SMTP_ADMIN_EMAILS:}
     jwt:
       secret: ${JWT_SECRET:local-development-secret-must-be-at-least-thirty-two-characters}
       access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:900}

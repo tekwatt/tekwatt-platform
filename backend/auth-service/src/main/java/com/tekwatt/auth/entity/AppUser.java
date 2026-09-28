@@ -19,4 +19,5 @@ public class AppUser {
     public String getPasswordHash() { return passwordHash; }
     public String getRole() { return role; }
     public boolean isEnabled() { return enabled; }
+    public void changePassword(String passwordHash) { this.passwordHash = passwordHash; }
 }

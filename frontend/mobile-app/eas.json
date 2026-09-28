@@ -14,7 +14,12 @@
       }
     },
     "production": {
+      "environment": "production",
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-gateway.lemonmushroom-1166ae48.eastasia.azurecontainerapps.io",
+        "EXPO_PUBLIC_CUSTOMER_PORTAL_URL": "https://tekwattr25ddrfkweb.z7.web.core.windows.net"
+      },
       "android": {
         "buildType": "app-bundle"
       }

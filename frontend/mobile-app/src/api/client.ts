@@ -58,6 +58,8 @@ const pageContent = <T>(value: { content?: T[] } | T[]) => Array.isArray(value) 
 
 export const api = {
   login: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  requestPasswordReset: (email: string) => request<void>('/api/v1/auth/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) }),
+  confirmPasswordReset: (email: string, code: string, newPassword: string) => request<void>('/api/v1/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify({ email, code, newPassword }) }),
   registerAuth: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
   refreshAuth: (refreshToken: string) => request<TokenResponse>('/api/v1/auth/refresh', { method: 'POST', body: JSON.stringify({ refreshToken }) }),
   logout: (refreshToken: string) => request<void>('/api/v1/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken }) }),
