@@ -99,6 +99,9 @@ class ApiSessionAuthenticationFilterTest {
     void publicAuthenticationAndCorsPreflightStayAccessible() {
         for (var request : new MockServerHttpRequest[] {
                 MockServerHttpRequest.post("/api/v1/auth/login").build(),
+                MockServerHttpRequest.get("/api/v1/auth/otp/msg91/config").build(),
+                MockServerHttpRequest.post("/api/v1/auth/otp/msg91/login").build(),
+                MockServerHttpRequest.post("/api/v1/auth/otp/msg91/phone/login").build(),
                 MockServerHttpRequest.post("/api/v1/auth/register").build(),
                 MockServerHttpRequest.options("/api/v1/chargers").build()}) {
             var forwarded = new AtomicBoolean();
@@ -107,5 +110,14 @@ class ApiSessionAuthenticationFilterTest {
             }).block();
             assertThat(forwarded).isTrue();
         }
+    }
+
+    @Test
+    void linkingPhoneRequiresAnActiveSession() {
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/otp/msg91/phone"));
+        var forwarded = new AtomicBoolean();
+        filter(HttpStatus.OK).filter(exchange, request -> { forwarded.set(true); return Mono.empty(); }).block();
+        assertThat(forwarded).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }

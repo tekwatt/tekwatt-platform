@@ -49,6 +49,8 @@ export type OcpiPartner={id:number;partnerName:string;countryCode:string;partyId
 export type OcpiSummary={partners:number;tokens:number;cdrs:number;commands:number};
 export type OcpiCredentials={data:{token:string;url:string;roles:unknown[]};status_code:number;timestamp:string};
 export type SmtpSettingsSummary={configured:boolean;source:'DATABASE'|'ENVIRONMENT'|'NONE';host:string;port:number;securityMode:string;username:string;fromEmail:string;replyTo:string|null;passwordConfigured:boolean;updatedAt:string|null};
+export type Msg91OtpSettingsSummary={configured:boolean;source:'DATABASE'|'ENVIRONMENT'|'NONE';widgetId:string;widgetTokenConfigured:boolean;serverAuthKeyConfigured:boolean;updatedAt:string|null};
+export type VerifiedPhone={phone:string;verifiedAt:string|null};
 
 class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -89,6 +91,7 @@ export function subscribeApiMutations(listener: MutationListener) {
 
 async function performRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = sessionStorage.getItem('tekwatt-access-token');
+  const isSignInRequest=path==='/api/v1/auth/login'||path==='/api/v1/auth/otp/msg91/login'||path==='/api/v1/auth/otp/msg91/phone/login'||path==='/api/v1/auth/register'||path==='/api/v1/auth/refresh';
   const method=(options.method??'GET').toUpperCase();
   const canRetry=['GET','HEAD','OPTIONS'].includes(method);
   const execute=async(accessToken:string|null)=>{try{return await fetch(`${API_BASE}${path}`, {
@@ -108,19 +111,31 @@ async function performRequest<T>(path: string, options: RequestInit = {}): Promi
     }
     return response;
   };
-  let response = await executeWithWarmupRetry(token);
-  if(response.status===401&&!path.startsWith('/api/v1/auth/login')&&!path.startsWith('/api/v1/auth/register')&&!path.startsWith('/api/v1/auth/refresh')){
+  let requestToken = token;
+  let response = await executeWithWarmupRetry(requestToken);
+  if(response.status===401&&!isSignInRequest){
+    const currentToken=sessionStorage.getItem('tekwatt-access-token');
+    if(currentToken&&currentToken!==requestToken){
+      requestToken=currentToken;
+      response=await executeWithWarmupRetry(requestToken);
+    }
+  }
+  if(response.status===401&&!isSignInRequest){
     const refreshToken=sessionStorage.getItem('tekwatt-refresh-token');
     if(refreshToken){
-      refreshOperation??=fetch(`${API_BASE}/api/v1/auth/refresh`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken})}).then(async result=>{if(!result.ok)return null;const tokens=await result.json() as TokenResponse;sessionStorage.setItem('tekwatt-access-token',tokens.accessToken);sessionStorage.setItem('tekwatt-refresh-token',tokens.refreshToken);return tokens.accessToken;}).catch(()=>null).finally(()=>{refreshOperation=null;});
-      const renewed=await refreshOperation;if(renewed)response=await executeWithWarmupRetry(renewed);
+      refreshOperation??=fetch(`${API_BASE}/api/v1/auth/refresh`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken})}).then(async result=>{if(!result.ok)return null;const tokens=await result.json() as TokenResponse;if(sessionStorage.getItem('tekwatt-refresh-token')!==refreshToken)return sessionStorage.getItem('tekwatt-access-token');sessionStorage.setItem('tekwatt-access-token',tokens.accessToken);sessionStorage.setItem('tekwatt-refresh-token',tokens.refreshToken);return tokens.accessToken;}).catch(()=>null).finally(()=>{refreshOperation=null;});
+      const renewed=await refreshOperation;if(renewed){requestToken=renewed;response=await executeWithWarmupRetry(renewed);}
     }
   }
   if (!response.ok) {
-    if(response.status===401&&!path.startsWith('/api/v1/auth/')){sessionStorage.setItem('tekwatt-auth-notice','Your session expired. Please sign in again.');window.dispatchEvent(new Event('tekwatt:session-expired'));}
-    const message=response.status===401&&path.startsWith('/api/v1/auth/login')
+    if(response.status===401&&!path.startsWith('/api/v1/auth/')&&requestToken===sessionStorage.getItem('tekwatt-access-token')){sessionStorage.setItem('tekwatt-auth-notice','Your session expired. Please sign in again.');window.dispatchEvent(new Event('tekwatt:session-expired'));}
+    const message=response.status===401&&path==='/api/v1/auth/login'
       ? 'The email address or password is incorrect. Please check your details and try again.'
-      : await friendlyError(response);
+      : response.status===401&&path==='/api/v1/auth/otp/msg91/login'
+        ? 'MSG91 accepted the code, but TekWatt could not verify it for this account. Check that the email matches your TekWatt login, then request a new code. If this continues, ask the administrator to check the MSG91 server Authkey and IP allowlist.'
+        : response.status===401&&path==='/api/v1/auth/otp/msg91/phone/login'
+          ? 'TekWatt could not sign in with this verified phone. Sign in with your email and check the verified sign-in phone under Account Settings; a profile phone alone is not linked.'
+        : await friendlyError(response);
     throw new ApiError(message, response.status);
   }
   return response.status === 204 ? undefined as T : response.json() as Promise<T>;
@@ -154,6 +169,13 @@ const pageContent = <T>(value: { content?: T[] } | T[]) => Array.isArray(value) 
 export const api = {
   realtimeUrl: (tenantId: string) => `${API_BASE}/api/v1/admin/events?tenantId=${encodeURIComponent(tenantId)}`,
   login: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  msg91OtpConfig: () => request<{widgetId:string;tokenAuth:string}>('/api/v1/auth/otp/msg91/config'),
+  loginWithMsg91: (email:string,accessToken:string) => request<TokenResponse>('/api/v1/auth/otp/msg91/login', { method: 'POST', body: JSON.stringify({ email, accessToken }) }),
+  loginWithMsg91Phone: (phone:string,accessToken:string) => request<TokenResponse>('/api/v1/auth/otp/msg91/phone/login', { method: 'POST', body: JSON.stringify({ phone, accessToken }) }),
+  verifiedPhone: () => request<VerifiedPhone>('/api/v1/auth/otp/msg91/phone'),
+  linkVerifiedPhone: (phone:string,accessToken:string) => request<VerifiedPhone>('/api/v1/auth/otp/msg91/phone',{method:'POST',body:JSON.stringify({phone,accessToken})}),
+  msg91OtpSettings: (tenantId:string) => request<Msg91OtpSettingsSummary>(`/api/v1/auth/otp/msg91/settings?tenantId=${encodeURIComponent(tenantId)}`),
+  saveMsg91OtpSettings: (tenantId:string,body:{widgetId:string;tokenAuth:string;serverAuthKey:string}) => request<Msg91OtpSettingsSummary>(`/api/v1/auth/otp/msg91/settings?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
   register: (email: string, password: string) => request<TokenResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
   requestPasswordReset: (email: string) => request<void>('/api/v1/auth/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) }),
   confirmPasswordReset: (email: string, code: string, newPassword: string) => request<void>('/api/v1/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify({ email, code, newPassword }) }),
@@ -264,6 +286,7 @@ export const api = {
   saveRole:(tenantId:string,body:{roleName:string;permissions:string[]})=>request<RolePolicy>(`/api/v1/admin/governance/roles?tenantId=${encodeURIComponent(tenantId)}`,{method:'PUT',body:JSON.stringify(body)}),
   administrators:(tenantId:string)=>request<Administrator[]>(`/api/v1/admin/governance/administrators?tenantId=${encodeURIComponent(tenantId)}`),
   saveAdministrator:(tenantId:string,body:Record<string,unknown>,id?:string)=>request<Administrator>(id?`/api/v1/admin/governance/administrators/${id}?tenantId=${encodeURIComponent(tenantId)}`:`/api/v1/admin/governance/administrators?tenantId=${encodeURIComponent(tenantId)}`,{method:id?'PUT':'POST',body:JSON.stringify(body)}),
+  activateAdministrator:(tenantId:string,email:string,authUserId:string)=>request<void>(`/api/v1/auth/admin/activate?tenantId=${encodeURIComponent(tenantId)}`,{method:'POST',body:JSON.stringify({email,authUserId})}),
   deleteAdministrator:(id:string)=>request<void>(`/api/v1/admin/governance/administrators/${id}`,{method:'DELETE'}),
   adminApiKeys:(tenantId:string)=>request<AdminApiKey[]>(`/api/v1/admin/governance/api-keys?tenantId=${encodeURIComponent(tenantId)}`),
   createAdminApiKey:(tenantId:string,body:Record<string,unknown>)=>request<AdminApiKey>(`/api/v1/admin/governance/api-keys?tenantId=${encodeURIComponent(tenantId)}`,{method:'POST',body:JSON.stringify(body)}),

@@ -80,8 +80,10 @@ public class ApiSessionAuthenticationFilter implements GlobalFilter, Ordered {
     private record IdentityCheck(HttpStatus status, String role) { }
 
     private static boolean isPublicAuth(String path, HttpMethod method) {
+        if (method == HttpMethod.GET && path.equals("/api/v1/auth/otp/msg91/config")) return true;
         if (method != HttpMethod.POST) return false;
         return path.equals("/api/v1/auth/login") || path.equals("/api/v1/auth/register")
+                || path.equals("/api/v1/auth/otp/msg91/login") || path.equals("/api/v1/auth/otp/msg91/phone/login")
                 || path.equals("/api/v1/auth/refresh") || path.equals("/api/v1/auth/password-reset/request")
                 || path.equals("/api/v1/auth/password-reset/confirm");
     }

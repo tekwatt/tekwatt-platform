@@ -59,4 +59,22 @@ public class SmtpAdminAccess {
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This account is not an active administrator for the workspace.");
     }
+
+    public void requireActiveAdminRecord(UUID tenantId, UUID authUserId, String email) {
+        try {
+            JsonNode records = admins.get().uri(uri -> uri.path("/api/v1/admin/governance/administrators")
+                    .queryParam("tenantId", tenantId).build()).retrieve().body(JsonNode.class);
+            if (records != null && records.isArray()) for (JsonNode record : records) {
+                if ("ACTIVE".equalsIgnoreCase(record.path("status").asText())
+                        && "ADMIN".equalsIgnoreCase(record.path("roleName").asText())
+                        && authUserId.toString().equals(record.path("authUserId").asText())
+                        && email.equalsIgnoreCase(record.path("email").asText())) return;
+            }
+        } catch (Exception failure) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Administrator directory verification is temporarily unavailable.");
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "The account is not linked to an active administrator record.");
+    }
 }

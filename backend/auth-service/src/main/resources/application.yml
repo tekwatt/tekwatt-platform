@@ -42,6 +42,10 @@ tekwatt:
   services:
     admin: ${ADMIN_SERVICE_URL:http://localhost:8100}
   auth:
+    msg91:
+      widget-id: ${MSG91_OTP_WIDGET_ID:}
+      widget-token: ${MSG91_OTP_WIDGET_TOKEN:}
+      server-auth-key: ${MSG91_OTP_SERVER_AUTH_KEY:}
     reset-from: ${SMTP_FROM:}
     smtp-encryption-key: ${SMTP_CREDENTIALS_ENCRYPTION_KEY:}
     smtp-admin-emails: ${SMTP_ADMIN_EMAILS:}

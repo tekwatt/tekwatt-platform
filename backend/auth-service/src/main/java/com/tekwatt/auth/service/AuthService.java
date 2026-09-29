@@ -12,6 +12,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,46 @@ public class AuthService {
     @Transactional public TokenResponse login(LoginRequest request,String ipAddress,String userAgent) {
         AppUser user = users.findByEmailIgnoreCase(request.email().trim()).filter(AppUser::isEnabled).filter(candidate -> passwordEncoder.matches(request.password(), candidate.getPasswordHash())).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
         return issueTokens(user,ipAddress,userAgent);
+    }
+    @Transactional public TokenResponse loginVerifiedEmail(String email,String ipAddress,String userAgent) {
+        AppUser user = users.findByEmailIgnoreCase(email.trim()).filter(AppUser::isEnabled)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No active TekWatt account matches the verified email"));
+        return issueTokens(user,ipAddress,userAgent);
+    }
+    @Transactional public TokenResponse loginVerifiedPhone(String phone,String ipAddress,String userAgent) {
+        String normalized = Msg91OtpService.normalizePhone(phone);
+        AppUser user = users.findByVerifiedPhone(normalized).filter(AppUser::isEnabled)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No active TekWatt account has this verified phone"));
+        return issueTokens(user,ipAddress,userAgent);
+    }
+    @Transactional(readOnly=true) public VerifiedPhoneResponse verifiedPhone(String authorization) {
+        var identity = activeIdentity(authorization);
+        AppUser user = users.findById(identity.userId()).filter(AppUser::isEnabled)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account is not active"));
+        return new VerifiedPhoneResponse(user.getVerifiedPhone() == null ? "" : "+" + user.getVerifiedPhone(), user.getPhoneVerifiedAt());
+    }
+    @Transactional public VerifiedPhoneResponse linkVerifiedPhone(String authorization,String phone) {
+        var identity = activeIdentity(authorization);
+        String normalized = Msg91OtpService.normalizePhone(phone);
+        AppUser user = users.findById(identity.userId()).filter(AppUser::isEnabled)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account is not active"));
+        if (users.findByVerifiedPhone(normalized).filter(other -> !other.getId().equals(user.getId())).isPresent())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This phone is already linked to another account");
+        user.linkVerifiedPhone(normalized);
+        try { users.flush(); }
+        catch (DataIntegrityViolationException conflict) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This phone is already linked to another account");
+        }
+        return new VerifiedPhoneResponse("+" + normalized, user.getPhoneVerifiedAt());
+    }
+    public record VerifiedPhoneResponse(String phone, Instant verifiedAt) { }
+    @Transactional public void activateAdministrator(String email, UUID authUserId) {
+        AppUser user = users.findById(authUserId).filter(AppUser::isEnabled)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Authentication account not found"));
+        if (!user.getEmail().equalsIgnoreCase(email.trim()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Administrator email does not match the authentication account");
+        user.changeRole("ADMIN");
+        refreshTokens.findAllByUser_IdOrderByCreatedAtDesc(user.getId()).forEach(RefreshToken::revoke);
     }
     @Transactional public TokenResponse refresh(RefreshRequest request,String ipAddress,String userAgent) {
         RefreshToken token = refreshTokens.findByToken(request.refreshToken()).filter(candidate -> !candidate.isRevoked()).filter(candidate -> candidate.getExpiresAt().isAfter(Instant.now())).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));

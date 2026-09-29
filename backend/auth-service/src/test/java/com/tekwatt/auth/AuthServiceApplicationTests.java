@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.tekwatt.auth.entity.AppUser;
 import com.tekwatt.auth.repository.AppUserRepository;
 import com.tekwatt.auth.repository.SmtpSettingsRepository;
+import com.tekwatt.auth.repository.Msg91OtpSettingsRepository;
+import com.tekwatt.auth.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,9 +30,96 @@ class AuthServiceApplicationTests {
     @MockBean JavaMailSender mailSender;
     @Autowired AppUserRepository users;
     @Autowired SmtpSettingsRepository smtpSettings;
+    @Autowired Msg91OtpSettingsRepository msg91Settings;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired AuthService authService;
 
     @Test void contextLoads() { }
+
+    @Test void phoneLoginRequiresAVerifiedPhoneLinkedToAnActiveAccount() {
+        String email = "phone-" + UUID.randomUUID() + "@tekwatt.in";
+        AppUser user = users.save(new AppUser(email, passwordEncoder.encode("PhonePassword@123"), "DRIVER"));
+        String access = http.postForEntity("/api/v1/auth/login",
+                Map.of("email", email, "password", "PhonePassword@123"), JsonNode.class)
+                .getBody().path("accessToken").asText();
+        HttpHeaders headers = new HttpHeaders(); headers.setBearerAuth(access);
+        assertThat(http.exchange("/api/v1/auth/otp/msg91/phone", HttpMethod.GET,
+                new HttpEntity<>(headers), JsonNode.class).getBody().path("phone").asText()).isBlank();
+        assertThat(http.postForEntity("/api/v1/auth/otp/msg91/phone/login",
+                Map.of("phone", "+919843170206", "accessToken", "unverified"), JsonNode.class)
+                .getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        user.linkVerifiedPhone("919843170206");
+        users.saveAndFlush(user);
+        assertThat(http.exchange("/api/v1/auth/otp/msg91/phone", HttpMethod.GET,
+                new HttpEntity<>(headers), JsonNode.class).getBody().path("phone").asText())
+                .isEqualTo("+919843170206");
+        // A directory phone alone is never trusted; the authenticator stores only verified bindings.
+        assertThat(users.findByVerifiedPhone("919843170206")).isPresent();
+    }
+
+    @Test void anonymousRegistrationCannotActivateAnAdministratorRole() {
+        String email = "new-admin-" + UUID.randomUUID() + "@tekwatt.in";
+        JsonNode registration = http.postForEntity("/api/v1/auth/register",
+                Map.of("email", email, "password", "AdminPassword@123"), JsonNode.class).getBody();
+        UUID id = users.findByEmailIgnoreCase(email).orElseThrow().getId();
+        assertThat(users.findById(id).orElseThrow().getRole()).isEqualTo("DRIVER");
+        HttpHeaders headers = new HttpHeaders(); headers.setBearerAuth(registration.path("accessToken").asText());
+        assertThat(http.exchange("/api/v1/auth/admin/activate?tenantId=" + UUID.randomUUID(), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", email, "authUserId", id), headers), Void.class)
+                .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(users.findById(id).orElseThrow().getRole()).isEqualTo("DRIVER");
+        authService.activateAdministrator(email, id);
+        assertThat(users.findById(id).orElseThrow().getRole()).isEqualTo("ADMIN");
+        assertThat(http.exchange("/api/v1/auth/sessions", HttpMethod.GET,
+                new HttpEntity<>(headers), JsonNode.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test void msg91LoginFailsClosedUntilProviderIsConfigured() {
+        assertThat(http.getForEntity("/api/v1/auth/otp/msg91/config", JsonNode.class).getStatusCode())
+                .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(http.postForEntity("/api/v1/auth/otp/msg91/login",
+                Map.of("email", "admin@tekwatt.in", "accessToken", "unverified-widget-result"), JsonNode.class)
+                .getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @Test void adminCanSaveOtpSettingsWithoutExposingServerAuthkey() {
+        String adminEmail = "otp-admin-" + UUID.randomUUID() + "@tekwatt.in";
+        users.save(new AppUser(adminEmail, passwordEncoder.encode("AdminPassword@123"), "ADMIN"));
+        String adminToken = http.postForEntity("/api/v1/auth/login",
+                Map.of("email", adminEmail, "password", "AdminPassword@123"), JsonNode.class)
+                .getBody().path("accessToken").asText();
+        HttpHeaders adminHeaders = new HttpHeaders(); adminHeaders.setBearerAuth(adminToken);
+        String driverEmail = "otp-driver-" + UUID.randomUUID() + "@tekwatt.in";
+        String driverToken = http.postForEntity("/api/v1/auth/register",
+                Map.of("email", driverEmail, "password", "DriverPassword@123"), JsonNode.class)
+                .getBody().path("accessToken").asText();
+        HttpHeaders driverHeaders = new HttpHeaders(); driverHeaders.setBearerAuth(driverToken);
+        String uri = "/api/v1/auth/otp/msg91/settings?tenantId=" + UUID.randomUUID();
+        Map<String, String> credentials = Map.of("widgetId", "test-widget-1234",
+                "tokenAuth", "test-widget-token-long-enough", "serverAuthKey", "server-auth-key-long-enough");
+        try {
+            assertThat(http.exchange(uri, HttpMethod.PUT, new HttpEntity<>(credentials, driverHeaders), JsonNode.class)
+                    .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            ResponseEntity<JsonNode> saved = http.exchange(uri, HttpMethod.PUT,
+                    new HttpEntity<>(credentials, adminHeaders), JsonNode.class);
+            assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(saved.getBody().path("configured").asBoolean()).isTrue();
+            assertThat(saved.getBody().toString()).doesNotContain("server-auth-key-long-enough")
+                    .doesNotContain("test-widget-token-long-enough");
+            var row = msg91Settings.findById(1).orElseThrow();
+            assertThat(row.getEncryptedServerAuthKey()).doesNotContain("server-auth-key-long-enough");
+            assertThat(row.getEncryptedWidgetToken()).doesNotContain("test-widget-token-long-enough");
+            assertThat(http.exchange(uri, HttpMethod.PUT, new HttpEntity<>(Map.of(
+                    "widgetId", "test-widget-1234", "tokenAuth", "", "serverAuthKey", ""), adminHeaders),
+                    JsonNode.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+            ResponseEntity<JsonNode> config = http.getForEntity("/api/v1/auth/otp/msg91/config", JsonNode.class);
+            assertThat(config.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(config.getBody().path("tokenAuth").asText()).isEqualTo("test-widget-token-long-enough");
+            assertThat(config.getBody().toString()).doesNotContain("server-auth-key-long-enough");
+            assertThat(http.exchange(uri, HttpMethod.GET, new HttpEntity<>(driverHeaders), JsonNode.class)
+                    .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        } finally { msg91Settings.deleteAll(); }
+    }
 
     @Test
     void exposesOpenApiWithBearerSecurity() {
