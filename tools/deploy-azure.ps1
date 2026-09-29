@@ -8,6 +8,7 @@ param(
     [SecureString]$MySqlAdminPassword,
     [SecureString]$JwtSecret,
     [SecureString]$OcppSharedKey,
+    [SecureString]$OcppInternalCommandKey,
     [string]$ImageTag = (Get-Date -Format "yyyyMMddHHmmss"),
     [int]$BackendMinReplicas = 1,
     [int]$AlwaysOnMinReplicas = 1,
@@ -86,14 +87,19 @@ if (-not $JwtSecret) {
 if (-not $OcppSharedKey) {
     $OcppSharedKey = Read-Host "Enter a NEW OCPP shared key" -AsSecureString
 }
+if (-not $OcppInternalCommandKey) {
+    $OcppInternalCommandKey = Read-Host "Enter the private OCPP internal command key (at least 32 characters; reuse on updates)" -AsSecureString
+}
 
 $mysqlPasswordText = Get-PlainText $MySqlAdminPassword
 $jwtSecretText = Get-PlainText $JwtSecret
 $ocppSharedKeyText = Get-PlainText $OcppSharedKey
+$ocppInternalCommandKeyText = Get-PlainText $OcppInternalCommandKey
 
 if ($mysqlPasswordText.Length -lt 12) { throw "The production MySQL password must contain at least 12 characters." }
 if ($jwtSecretText.Length -lt 32) { throw "The JWT secret must contain at least 32 characters." }
 if ($ocppSharedKeyText.Length -lt 16) { throw "The OCPP shared key must contain at least 16 characters." }
+if ($ocppInternalCommandKeyText.Length -lt 32) { throw "The OCPP internal command key must contain at least 32 characters." }
 
 if (-not $Yes) {
     Write-Host "This will create billable Azure resources in ${Location}:" -ForegroundColor Yellow
@@ -203,6 +209,7 @@ try {
         mysqlAdminPassword = $mysqlPasswordText
         jwtSecret = $jwtSecretText
         ocppSharedKey = $ocppSharedKeyText
+        ocppInternalCommandKey = $ocppInternalCommandKeyText
         frontendUrl = $staticWebAppUrl
         imageTag = $ImageTag
         backendMinReplicas = $BackendMinReplicas
@@ -282,6 +289,7 @@ finally {
     $mysqlPasswordText = $null
     $jwtSecretText = $null
     $ocppSharedKeyText = $null
+    $ocppInternalCommandKeyText = $null
     if (Test-Path -LiteralPath $script:temporaryDirectory) {
         Remove-Item -LiteralPath $script:temporaryDirectory -Recurse -Force
     }

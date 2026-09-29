@@ -15,9 +15,9 @@ export function WalletScreen() {
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
-  const load = useCallback(async () => { if (!token || !tenant) return; setLoading(true); setError(''); try { const [wallets, paymentData] = await Promise.all([api.wallets(tenant.id, token), api.payments(tenant.id, token)]); const selected=wallets.find(item => item.userId === profile?.id) || null;setWallet(selected);setEntries(selected?await api.walletEntries(selected.id,token):[]); setPayments(paymentData.filter(item => !profile || item.userId === profile.id)); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load wallet information.'); } finally { setLoading(false); } }, [profile, tenant, token]);
+  const load = useCallback(async () => { if (!token || !tenant) return; setLoading(true); setError(''); try { const [selected, paymentData] = await Promise.all([api.myWallet(token), api.myPayments(token)]); setWallet(selected);setEntries(selected?await api.myWalletEntries(token):[]); setPayments(paymentData); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to load wallet information.'); } finally { setLoading(false); } }, [tenant, token]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
-  const create = async () => { if (!token || !tenant || !profile) return setError('A linked customer profile is required to create a wallet.'); setCreating(true); setError(''); try { await api.createWallet(tenant.id, profile.id, token); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to create wallet.'); } finally { setCreating(false); } };
+  const create = async () => { if (!token || !tenant || !profile) return setError('A linked customer profile is required to create a wallet.'); setCreating(true); setError(''); try { await api.createMyWallet(token); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to create wallet.'); } finally { setCreating(false); } };
   return <Screen refreshing={loading} onRefresh={load}>
     <PageHeader eyebrow="PAYMENTS" title="Wallet & payments" subtitle="Review your TekWatt balance and charging payment history."/>
     {error ? <ErrorBanner message={error}/> : null}

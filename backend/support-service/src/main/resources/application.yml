@@ -8,4 +8,5 @@ spring:
     open-in-view: false
     hibernate.ddl-auto: validate
 server.port: ${SERVER_PORT:8101}
+tekwatt.services.user: ${USER_SERVICE_URL:http://localhost:8082}
 management.endpoints.web.exposure.include: health,info

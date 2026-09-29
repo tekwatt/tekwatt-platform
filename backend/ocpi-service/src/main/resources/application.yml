@@ -27,3 +27,4 @@ tekwatt:
     session-service-url: ${CHARGING_SESSION_SERVICE_URL:http://localhost:8084}
     reservation-service-url: ${RESERVATION_SERVICE_URL:http://localhost:8089}
     ocpp-gateway-url: ${OCPP_GATEWAY_URL:http://localhost:8094}
+    ocpp-internal-command-key: ${OCPP_INTERNAL_COMMAND_KEY:}

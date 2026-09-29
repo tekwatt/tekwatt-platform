@@ -17,6 +17,10 @@ param jwtSecret string
 @secure()
 param ocppSharedKey string
 
+@secure()
+@minLength(32)
+param ocppInternalCommandKey string
+
 param frontendUrl string
 param imageTag string
 param backendMinReplicas int = 1
@@ -109,7 +113,11 @@ var services = [
     databaseEnvName: 'DATABASE_URL'
     external: false
     alwaysOn: false
-    additionalEnvironment: []
+    additionalEnvironment: [
+      { name: 'AUTH_SERVICE_URL', value: 'http://auth-service' }
+      { name: 'CHARGER_SERVICE_URL', value: 'http://charger-service' }
+      { name: 'CHARGING_SESSION_SERVICE_URL', value: 'http://charging-session-service' }
+    ]
   }
   {
     name: 'charger-service'
@@ -118,7 +126,9 @@ var services = [
     databaseEnvName: 'DATABASE_URL'
     external: false
     alwaysOn: false
-    additionalEnvironment: []
+    additionalEnvironment: [
+      { name: 'USER_SERVICE_URL', value: 'http://user-service' }
+    ]
   }
   {
     name: 'charging-session-service'
@@ -162,7 +172,9 @@ var services = [
     databaseEnvName: 'DATABASE_URL'
     external: false
     alwaysOn: false
-    additionalEnvironment: []
+    additionalEnvironment: [
+      { name: 'USER_SERVICE_URL', value: 'http://user-service' }
+    ]
   }
   {
     name: 'tariff-service'
@@ -180,7 +192,10 @@ var services = [
     databaseEnvName: 'DATABASE_URL'
     external: false
     alwaysOn: false
-    additionalEnvironment: []
+    additionalEnvironment: [
+      { name: 'USER_SERVICE_URL', value: 'http://user-service' }
+      { name: 'CONNECTOR_SERVICE_URL', value: 'http://connector-service' }
+    ]
   }
   {
     name: 'billing-service'
@@ -189,7 +204,9 @@ var services = [
     databaseEnvName: 'DATABASE_URL'
     external: false
     alwaysOn: false
-    additionalEnvironment: []
+    additionalEnvironment: [
+      { name: 'USER_SERVICE_URL', value: 'http://user-service' }
+    ]
   }
   {
     name: 'invoice-service'
@@ -198,7 +215,9 @@ var services = [
     databaseEnvName: 'DATABASE_URL'
     external: false
     alwaysOn: false
-    additionalEnvironment: []
+    additionalEnvironment: [
+      { name: 'USER_SERVICE_URL', value: 'http://user-service' }
+    ]
   }
   {
     name: 'payment-service'
@@ -207,7 +226,10 @@ var services = [
     databaseEnvName: 'DATABASE_URL'
     external: false
     alwaysOn: false
-    additionalEnvironment: []
+    additionalEnvironment: [
+      { name: 'USER_SERVICE_URL', value: 'http://user-service' }
+      { name: 'INVOICE_SERVICE_URL', value: 'http://invoice-service' }
+    ]
   }
   {
     name: 'notification-service'
@@ -227,6 +249,9 @@ var services = [
     alwaysOn: true
     additionalEnvironment: [
       { name: 'OCPP_SHARED_KEY', secretRef: 'ocpp-shared-key' }
+      { name: 'OCPP_INTERNAL_COMMAND_KEY', secretRef: 'ocpp-internal-command-key' }
+      { name: 'AUTH_SERVICE_URL', value: 'http://auth-service' }
+      { name: 'ADMIN_SERVICE_URL', value: 'http://admin-service' }
       { name: 'USER_SERVICE_URL', value: 'http://user-service' }
       { name: 'CHARGER_SERVICE_URL', value: 'http://charger-service' }
       { name: 'CHARGING_SESSION_SERVICE_URL', value: 'http://charging-session-service' }
@@ -253,6 +278,7 @@ var services = [
     alwaysOn: false
     additionalEnvironment: [
       { name: 'OCPP_GATEWAY_URL', value: 'http://ocpp-gateway' }
+      { name: 'OCPP_INTERNAL_COMMAND_KEY', secretRef: 'ocpp-internal-command-key' }
     ]
   }
   {
@@ -309,7 +335,9 @@ var services = [
     databaseEnvName: 'DATABASE_URL'
     external: false
     alwaysOn: false
-    additionalEnvironment: []
+    additionalEnvironment: [
+      { name: 'USER_SERVICE_URL', value: 'http://user-service' }
+    ]
   }
   {
     name: 'ocpi-service'
@@ -326,6 +354,7 @@ var services = [
       { name: 'CHARGING_SESSION_SERVICE_URL', value: 'http://charging-session-service' }
       { name: 'RESERVATION_SERVICE_URL', value: 'http://reservation-service' }
       { name: 'OCPP_GATEWAY_URL', value: 'http://ocpp-gateway' }
+      { name: 'OCPP_INTERNAL_COMMAND_KEY', secretRef: 'ocpp-internal-command-key' }
     ]
   }
 ]
@@ -378,6 +407,10 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [for service i
         {
           name: 'ocpp-shared-key'
           value: ocppSharedKey
+        }
+        {
+          name: 'ocpp-internal-command-key'
+          value: ocppInternalCommandKey
         }
       ]
     }
@@ -440,7 +473,8 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [for service i
       ]
       scale: {
         minReplicas: service.alwaysOn ? alwaysOnMinReplicas : backendMinReplicas
-        maxReplicas: maxReplicas
+        // OCPP sockets and command results are process-local until a shared registry is implemented.
+        maxReplicas: service.name == 'ocpp-gateway' ? 1 : maxReplicas
         rules: [
           {
             name: 'http-scaling'

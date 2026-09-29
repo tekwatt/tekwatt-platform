@@ -41,4 +41,5 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
     boolean existsByConnectorIdAndStatus(UUID connectorId, SessionStatus status);
     Optional<ChargingSession> findByTransactionId(String transactionId);
     List<ChargingSession> findAllByTenantIdOrderByStartedAtDesc(UUID tenantId);
+    List<ChargingSession> findAllByTenantIdAndUserIdOrderByStartedAtDesc(UUID tenantId, UUID userId);
 }

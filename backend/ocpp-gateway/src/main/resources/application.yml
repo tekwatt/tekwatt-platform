@@ -9,9 +9,12 @@ spring:
     hibernate.ddl-auto: validate
 server.port: ${SERVER_PORT:8094}
 tekwatt.ocpp.shared-key: ${OCPP_SHARED_KEY:}
+tekwatt.ocpp.internal-command-key: ${OCPP_INTERNAL_COMMAND_KEY:}
 management.endpoints.web.exposure.include: health,info
 tekwatt.firmware.service-url: ${FIRMWARE_SERVICE_URL:http://localhost:8096}
 tekwatt.services:
+  auth: ${AUTH_SERVICE_URL:http://localhost:8081}
+  admin: ${ADMIN_SERVICE_URL:http://localhost:8100}
   user: ${USER_SERVICE_URL:http://localhost:8082}
   charger: ${CHARGER_SERVICE_URL:http://localhost:8083}
   session: ${CHARGING_SESSION_SERVICE_URL:http://localhost:8084}

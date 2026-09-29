@@ -22,7 +22,7 @@ class ChargingSessionExceptionHandlerTest {
         ChargingSessionService service = mock(ChargingSessionService.class);
         when(service.start(any())).thenThrow(new ResponseStatusException(
                 HttpStatus.CONFLICT, "Assign an active tariff to this charger before starting a session"));
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new ChargingSessionController(service))
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new ChargingSessionController(service,org.mockito.Mockito.mock(com.tekwatt.session.service.CurrentCustomerSessionService.class)))
                 .setControllerAdvice(new ChargingSessionExceptionHandler())
                 .build();
 

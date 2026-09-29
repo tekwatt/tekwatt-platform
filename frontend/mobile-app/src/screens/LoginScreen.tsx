@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../api/client';
@@ -9,6 +9,7 @@ import { colors, radius } from '../theme';
 export function LoginScreen() {
   const { signIn, register } = useAuth();
   const registrationEnabled = Boolean(process.env.EXPO_PUBLIC_DEFAULT_TENANT_ID?.trim());
+  const portal = process.env.EXPO_PUBLIC_CUSTOMER_PORTAL_URL?.replace(/\/$/, '');
   const [mode, setMode] = useState<'login' | 'register' | 'request-reset' | 'confirm-reset'>('login');
   const [form, setForm] = useState({ email: '', password: '', firstName: '', lastName: '', phone: '' });
   const [resetCode,setResetCode]=useState('');
@@ -44,7 +45,7 @@ export function LoginScreen() {
       <Image source={require('../../assets/logo-sidebar.webp')} resizeMode="contain" style={styles.logo}/>
       <Text style={styles.kicker}>CHARGE. CONNECT. CONSERVE.</Text>
       <Text style={styles.heroTitle}>Your EV network, in your pocket.</Text>
-      <Text style={styles.heroCopy}>Find stations, manage charging and stay in control with TekWatt Nexus.</Text>
+      <Text style={styles.heroCopy}>Charge as a driver or monitor your stations as a TekWatt CPO.</Text>
     </View>
     <View style={styles.sheet}>
       {registrationEnabled && <View style={styles.switcher}><Pressable onPress={() => { setMode('login'); setError(''); }} style={[styles.switch, mode === 'login' && styles.switchActive]}><Text style={[styles.switchText, mode === 'login' && styles.switchTextActive]}>Sign in</Text></Pressable><Pressable onPress={() => { setMode('register'); setError(''); }} style={[styles.switch, mode === 'register' && styles.switchActive]}><Text style={[styles.switchText, mode === 'register' && styles.switchTextActive]}>Create account</Text></Pressable></View>}
@@ -57,7 +58,8 @@ export function LoginScreen() {
       {error ? <ErrorBanner message={error}/> : null}
       <PrimaryButton label={mode==='login'?'Sign in securely':mode==='register'?'Create customer account':mode==='request-reset'?'Email reset code':'Update password'} onPress={() => void submit()} loading={loading}/>
       {mode==='login'?<Pressable onPress={()=>{setMode('request-reset');setError('');setNotice('');}}><Text style={styles.help}>Forgot password?</Text></Pressable>:mode==='request-reset'||mode==='confirm-reset'?<Pressable onPress={()=>{setMode('login');setError('');setNotice('');}}><Text style={styles.help}>Back to sign in</Text></Pressable>:null}
-      <Text style={styles.help}>{mode === 'login' ? 'Use the customer account created by your TekWatt administrator.' : mode==='register'?'Self-registration requires a default workspace ID in the mobile environment.':''}</Text>
+      <Text style={styles.help}>{mode === 'login' ? 'Sign in with your TekWatt customer or CPO account.' : mode==='register'?'Your new customer account will join the TekWatt workspace configured for this app.':' '}</Text>
+      {portal ? <Pressable onPress={() => void Linking.openURL(`${portal}/privacy.html`)}><Text style={styles.help}>Privacy policy</Text></Pressable> : null}
     </View>
   </KeyboardAvoidingView></SafeAreaView>;
 }

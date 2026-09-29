@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { ApiError, api } from '../api/client';
-import type { RegistrationInput, Tenant, TokenClaims, UserProfile } from '../types';
+import type { CpoIdentity, RegistrationInput, Tenant, TokenClaims, UserProfile } from '../types';
 
 const ACCESS_KEY = 'tekwatt.access-token';
 const REFRESH_KEY = 'tekwatt.refresh-token';
@@ -22,6 +22,8 @@ type AuthState = {
   tenants: Tenant[];
   tenant: Tenant | null;
   profile: UserProfile | null;
+  role: 'CUSTOMER' | 'CPO' | null;
+  cpo: CpoIdentity | null;
   signIn: (email: string, password: string) => Promise<void>;
   register: (input: RegistrationInput) => Promise<void>;
   signOut: () => Promise<void>;
@@ -43,24 +45,37 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [tenants,setTenants]=useState<Tenant[]>([]);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [role, setRole] = useState<'CUSTOMER' | 'CPO' | null>(null);
+  const [cpo, setCpo] = useState<CpoIdentity | null>(null);
 
   const clear = useCallback(async () => {
     await Promise.all([SecureStore.deleteItemAsync(ACCESS_KEY), SecureStore.deleteItemAsync(REFRESH_KEY)]);
-    setToken(null); setRefreshToken(null); setClaims(null); setTenants([]); setTenant(null); setProfile(null);
+    setToken(null); setRefreshToken(null); setClaims(null); setTenants([]); setTenant(null); setProfile(null); setRole(null); setCpo(null);
   }, []);
 
   const hydrate = useCallback(async (access: string, refresh: string) => {
     const decoded = decodeClaims(access);
-    const tenants = await api.tenants(access);
-    if (!tenants.length) throw new ApiError('No active TekWatt workspace is available for this account.', 404);
-    const storedTenantId = await SecureStore.getItemAsync(TENANT_KEY);
-    const selectedTenant = tenants.find(item => item.id === storedTenantId) || tenants[0]!;
-    let selectedProfile: UserProfile | null = null;
-    try { selectedProfile = await api.userByAuth(decoded.sub, access); } catch (error) {
+    let selectedCpo: CpoIdentity | null = null;
+    try { selectedCpo = await api.cpoIdentity(access); } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 404) throw error;
     }
+    if (selectedCpo) {
+      const selectedTenant = await api.tenant(selectedCpo.tenantId, access);
+      if (selectedTenant.status && selectedTenant.status !== 'ACTIVE') throw new ApiError('Your CPO workspace is not active. Contact TekWatt support.', 403);
+      await SecureStore.setItemAsync(TENANT_KEY, selectedTenant.id);
+      setToken(access); setRefreshToken(refresh); setClaims(decoded); setTenants([selectedTenant]); setTenant(selectedTenant);
+      setProfile(null); setCpo(selectedCpo); setRole('CPO');
+      return;
+    }
+    let selectedProfile: UserProfile | null = null;
+    try { selectedProfile = await api.myProfile(access); } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 404) throw error;
+    }
+    if (!selectedProfile?.tenantId) throw new ApiError('This login is not linked to a driver workspace. Ask TekWatt support to complete your customer profile.', 403);
+    const selectedTenant = await api.tenant(selectedProfile.tenantId, access);
+    if (selectedTenant.status && selectedTenant.status !== 'ACTIVE') throw new ApiError('Your driver workspace is not active. Contact TekWatt support.', 403);
     await SecureStore.setItemAsync(TENANT_KEY, selectedTenant.id);
-    setToken(access); setRefreshToken(refresh); setClaims(decoded); setTenants(tenants); setTenant(selectedTenant); setProfile(selectedProfile);
+    setToken(access); setRefreshToken(refresh); setClaims(decoded); setTenants([selectedTenant]); setTenant(selectedTenant); setProfile(selectedProfile); setCpo(null); setRole('CUSTOMER');
   }, []);
 
   useEffect(() => {
@@ -94,9 +109,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [clear, hydrate]);
 
   const signOut = useCallback(async () => {
-    try { if (refreshToken) await api.logout(refreshToken); } catch { /* local sign-out still succeeds */ }
+    try { if (refreshToken && token) await api.logout(refreshToken, token); } catch { /* local sign-out still succeeds */ }
     await clear();
-  }, [clear, refreshToken]);
+  }, [clear, refreshToken, token]);
 
   const selectTenant=useCallback(async(tenantId:string)=>{const selected=tenants.find(item=>item.id===tenantId);if(!selected)return;await SecureStore.setItemAsync(TENANT_KEY,selected.id);setTenant(selected);},[tenants]);
 
@@ -109,10 +124,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const refreshProfile = useCallback(async () => {
     if (!token || !claims) return;
-    setProfile(await api.userByAuth(claims.sub, token));
+    setProfile(await api.myProfile(token));
   }, [claims, token]);
 
-  const value = useMemo(() => ({ booting, token, refreshToken, claims, tenants, tenant, profile, signIn, register, signOut, selectTenant, refreshProfile }), [booting, token, refreshToken, claims, tenants, tenant, profile, signIn, register, signOut, selectTenant, refreshProfile]);
+  const value = useMemo(() => ({ booting, token, refreshToken, claims, tenants, tenant, profile, role, cpo, signIn, register, signOut, selectTenant, refreshProfile }), [booting, token, refreshToken, claims, tenants, tenant, profile, role, cpo, signIn, register, signOut, selectTenant, refreshProfile]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

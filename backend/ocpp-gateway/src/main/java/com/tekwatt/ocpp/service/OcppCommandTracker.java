@@ -4,12 +4,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OcppCommandTracker {
     private final Map<String, Result> results = new ConcurrentHashMap<>();
+    private final Map<String, UUID> customerOwners = new ConcurrentHashMap<>();
 
     public void register(String messageId) {
         purgeExpired();
@@ -38,9 +42,23 @@ public class OcppCommandTracker {
         return results.getOrDefault(messageId, new Result("UNKNOWN", "Unknown command", Instant.now()));
     }
 
+    public void claimForCustomer(String messageId, UUID userId) {
+        if (!results.containsKey(messageId))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Command result not found");
+        customerOwners.put(messageId, userId);
+    }
+
+    public Result resultForCustomer(String messageId, UUID userId) {
+        purgeExpired();
+        if (!userId.equals(customerOwners.get(messageId)))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Command result not found");
+        return result(messageId);
+    }
+
     private void purgeExpired() {
         Instant cutoff = Instant.now().minus(Duration.ofHours(1));
         results.entrySet().removeIf(entry -> entry.getValue().updatedAt().isBefore(cutoff));
+        customerOwners.keySet().removeIf(messageId -> !results.containsKey(messageId));
     }
 
     public record Result(String result, String message, Instant updatedAt) {}

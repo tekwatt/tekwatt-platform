@@ -8,6 +8,8 @@ It listens on port 8082 and is routed through `/api/v1/users/**` by the gateway.
 | POST | `/api/v1/users` | Create a profile |
 | GET | `/api/v1/users/{id}` | Get a profile |
 | GET | `/api/v1/users/by-auth-user/{authUserId}` | Resolve an authentication user |
+| GET | `/api/v1/users/me` | Read the signed-in customer's own active profile |
+| PUT | `/api/v1/users/me` | Update only the signed-in customer's contact/profile fields |
 | GET | `/api/v1/users?tenantId={tenantId}` | List profiles with optional tenant filter |
 | PUT | `/api/v1/users/{id}` | Update profile details |
 | DELETE | `/api/v1/users/{id}` | Deactivate a profile |

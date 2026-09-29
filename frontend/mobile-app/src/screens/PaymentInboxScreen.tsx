@@ -16,7 +16,7 @@ export function PaymentInboxScreen(){
   const load=useCallback(async()=>{
     if(!token||!tenant||!profile){setItems([]);return;}
     const current=++generation.current;setLoading(true);
-    try{const all=await api.invoices(tenant.id,token);if(current!==generation.current)return;setItems(all.filter(i=>i.userId===profile.id&&['ISSUED','OVERDUE','PAID'].includes(i.status)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));setError('');}
+    try{const all=await api.myInvoices(token);if(current!==generation.current)return;setItems(all.filter(i=>['ISSUED','OVERDUE','PAID'].includes(i.status)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));setError('');}
     catch(e){if(current===generation.current)setError(e instanceof Error?e.message:'Unable to refresh payment inbox.');}finally{if(current===generation.current)setLoading(false);}
   },[token,tenant?.id,profile?.id]);
   useFocusEffect(useCallback(()=>{setItems([]);void load();const timer=setInterval(()=>void load(),15000);return()=>{generation.current++;clearInterval(timer);};},[load]));

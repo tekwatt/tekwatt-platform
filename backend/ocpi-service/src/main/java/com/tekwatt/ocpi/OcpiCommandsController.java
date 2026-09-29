@@ -35,13 +35,16 @@ public class OcpiCommandsController {
     private final OcpiDataService data;
     private final RestClient client;
     private final String ocppUrl;
+    private final String internalCommandKey;
 
     public OcpiCommandsController(JdbcTemplate jdbc, ObjectMapper json, OcpiDataService data,
-            @Value("${tekwatt.ocpi.ocpp-gateway-url}") String ocppUrl) {
+            @Value("${tekwatt.ocpi.ocpp-gateway-url}") String ocppUrl,
+            @Value("${tekwatt.ocpi.ocpp-internal-command-key:}") String internalCommandKey) {
         this.jdbc = jdbc;
         this.json = json;
         this.data = data;
         this.ocppUrl = ocppUrl.replaceAll("/+$", "");
+        this.internalCommandKey = internalCommandKey;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(3000);
         factory.setReadTimeout(10000);
@@ -126,7 +129,11 @@ public class OcpiCommandsController {
     }
 
     private String post(String path, Object request) {
-        JsonNode response = client.post().uri(ocppUrl + path).body(request).retrieve().body(JsonNode.class);
+        if (internalCommandKey == null || internalCommandKey.isBlank())
+            throw new IllegalStateException("OCPP internal command credential is not configured");
+        JsonNode response = client.post().uri(ocppUrl + path)
+                .header("X-Tekwatt-Internal-Command-Key", internalCommandKey)
+                .body(request).retrieve().body(JsonNode.class);
         if (response == null || !response.hasNonNull("messageId")) throw new IllegalStateException("OCPP command was not accepted");
         return response.path("messageId").asText();
     }

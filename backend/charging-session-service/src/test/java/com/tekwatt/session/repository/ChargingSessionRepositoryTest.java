@@ -90,6 +90,24 @@ class ChargingSessionRepositoryTest {
         assertThat(sessions.pendingBilling(java.time.Instant.now().plusSeconds(1),org.springframework.data.domain.PageRequest.of(0,20))).containsExactly(recovered.getId());
     }
 
+    @Test
+    void customerHistoryExcludesAnotherCustomerAndWorkspace() {
+        UUID tenant = UUID.randomUUID();
+        UUID customer = UUID.randomUUID();
+        ChargingSession own = new ChargingSession(tenant, customer, UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), "MY-SESSION", BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, "INR");
+        ChargingSession otherCustomer = new ChargingSession(tenant, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), "OTHER-CUSTOMER", BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, "INR");
+        ChargingSession otherWorkspace = new ChargingSession(UUID.randomUUID(), customer, UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), "OTHER-WORKSPACE", BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, "INR");
+        sessions.saveAllAndFlush(java.util.List.of(own, otherCustomer, otherWorkspace));
+        assertThat(sessions.findAllByTenantIdAndUserIdOrderByStartedAtDesc(tenant, customer))
+                .extracting(ChargingSession::getTransactionId).containsExactly("MY-SESSION");
+    }
+
     private ChargingSession session(UUID connectorId, String transactionId) {
         return new ChargingSession(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), connectorId, UUID.randomUUID(), transactionId,

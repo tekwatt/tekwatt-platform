@@ -38,6 +38,7 @@ public class ChargingSessionService {
     @Transactional(readOnly = true) public SessionResponse get(UUID id) { return map(find(id)); }
     @Transactional(readOnly = true) public SessionResponse getByTransactionId(String transactionId) { return map(sessions.findByTransactionId(transactionId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Charging session not found"))); }
     @Transactional(readOnly = true) public List<SessionResponse> list(UUID tenantId) { return sessions.findAllByTenantIdOrderByStartedAtDesc(tenantId).stream().map(this::map).toList(); }
+    @Transactional(readOnly = true) public List<SessionResponse> listForCustomer(UUID tenantId, UUID userId) { return sessions.findAllByTenantIdAndUserIdOrderByStartedAtDesc(tenantId, userId).stream().map(this::map).toList(); }
     public SessionResponse meterValue(UUID id, MeterValueRequest r) {
         ChargingSession s = active(id); try { s.applyMeterValue(r.meterWh()); } catch (IllegalArgumentException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()); }
         readings.save(new MeterReading(id, r.meterWh(), r.recordedAt() == null ? Instant.now() : r.recordedAt())); return map(s);

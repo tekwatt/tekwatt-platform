@@ -47,6 +47,7 @@ public class AuthController {
     @PostMapping("/refresh") TokenResponse refresh(@Valid @RequestBody RefreshRequest request,HttpServletRequest client) { return authService.refresh(request,ip(client),client.getHeader("User-Agent")); }
     @PostMapping("/logout") @ResponseStatus(HttpStatus.NO_CONTENT) void logout(@Valid @RequestBody LogoutRequest request){authService.logout(request);}
     @GetMapping("/sessions") List<UserSessionResponse> sessions(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization){return authService.sessions(authorization);}
+    @GetMapping("/identity") AuthIdentityResponse identity(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization){return authService.identity(authorization);}
     @DeleteMapping("/sessions/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) void revoke(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,@PathVariable UUID id){authService.revokeSession(authorization,id);}
     @PostMapping("/sessions/revoke-others") @ResponseStatus(HttpStatus.NO_CONTENT) void revokeOthers(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization){authService.revokeOtherSessions(authorization);}
     private String ip(HttpServletRequest request){String forwarded=request.getHeader("X-Forwarded-For");return forwarded==null||forwarded.isBlank()?request.getRemoteAddr():forwarded.split(",")[0].trim();}

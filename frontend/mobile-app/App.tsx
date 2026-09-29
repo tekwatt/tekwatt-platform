@@ -4,12 +4,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { LoginScreen } from './src/screens/LoginScreen';
+import { CpoScreen } from './src/screens/CpoScreen';
 import { colors } from './src/theme';
 
 function AppContent() {
-  const { booting, token } = useAuth();
+  const { booting, token, role } = useAuth();
   if (booting) return <View style={styles.boot}><View style={styles.bolt}><Text style={styles.boltText}>⚡</Text></View><Text style={styles.bootTitle}>TekWatt Nexus</Text><ActivityIndicator color={colors.cyan} style={styles.spinner}/></View>;
-  return token ? <AppNavigator/> : <LoginScreen/>;
+  return token ? role === 'CPO' ? <CpoScreen/> : <AppNavigator/> : <LoginScreen/>;
 }
 
 export default function App() {

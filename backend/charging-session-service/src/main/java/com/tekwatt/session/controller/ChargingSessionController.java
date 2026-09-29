@@ -2,8 +2,10 @@ package com.tekwatt.session.controller;
 
 import com.tekwatt.session.dto.*;
 import com.tekwatt.session.service.ChargingSessionService;
+import com.tekwatt.session.service.CurrentCustomerSessionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
@@ -11,10 +13,12 @@ import java.util.*;
 @RequestMapping("/api/v1/charging-sessions")
 public class ChargingSessionController {
     private final ChargingSessionService service;
+    private final CurrentCustomerSessionService currentCustomer;
     @org.springframework.beans.factory.annotation.Value("${SESSION_RECOVERY_KEY:}") private String recoveryKey;
-    public ChargingSessionController(ChargingSessionService service) { this.service = service; }
+    public ChargingSessionController(ChargingSessionService service, CurrentCustomerSessionService currentCustomer) { this.service = service; this.currentCustomer = currentCustomer; }
     @PostMapping @ResponseStatus(HttpStatus.CREATED) public SessionResponse start(@Valid @RequestBody StartSessionRequest request) { return service.start(request); }
     @GetMapping("/by-transaction/{transactionId}") public SessionResponse getByTransactionId(@PathVariable String transactionId) { return service.getByTransactionId(transactionId); }
+    @GetMapping("/my") public List<SessionResponse> mySessions(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) { return currentCustomer.mySessions(authorization); }
     @GetMapping("/{id}") public SessionResponse get(@PathVariable UUID id) { return service.get(id); }
     @GetMapping public List<SessionResponse> list(@RequestParam UUID tenantId) { return service.list(tenantId); }
     @PostMapping("/{id}/meter-values") public SessionResponse meterValue(@PathVariable UUID id, @Valid @RequestBody MeterValueRequest request) { return service.meterValue(id, request); }

@@ -225,7 +225,7 @@ function Header({ page, dark, toggleDark, openMenu, logout, navigate, realtime, 
   const canOpen=(item:{label:Page})=>item.label==='Dashboard'?permissions.has('Dashboard'):(navigationScreens[item.label]?.some(screen=>permissions.has(screen))??permissions.has(item.label));
   const search = (value: string) => { const query=value.trim().toLowerCase();if(!query)return;const targets=nav.filter(canOpen).flatMap(item=>{const parent:{page:Page;view?:string;label:string}={page:item.label,label:item.display??item.label};const children=(navigationScreens[item.label]??[]).filter(screen=>permissions.has(screen)).map(screen=>({page:item.label,view:screen,label:screen}));return[parent,...children];});const match=targets.find(item=>item.label.toLowerCase()===query)??targets.find(item=>item.label.toLowerCase().includes(query));if(match)navigate(match.page,match.view); };
   const initials=identity.name.split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TW';
-  return <header><button className="icon mobile-only" onClick={openMenu}><Menu /></button><div><small>{identity.role} PORTAL</small><h2>{page}</h2></div><div className="header-actions"><label className="search"><Search size={17} /><input placeholder="Search sections" onKeyDown={event => { if (event.key === 'Enter') search(event.currentTarget.value); }} /></label><span className={`live ${realtime}`} title="Real-time server event connection"><i /> {realtime === 'live' ? 'LIVE' : realtime === 'connecting' ? 'RECONNECTING' : 'OFFLINE'}</span><button className="icon" onClick={toggleDark} aria-label="Toggle theme">{dark ? <Sun /> : <Moon />}</button><button className="icon notification" onClick={() => window.alert('No new platform notifications.')} aria-label="Notifications"><Bell /><i /></button><button className="profile" onClick={() => permissions.has('Account Settings')?navigate('Settings','Account Settings'):navigate('Dashboard')}><span className="avatar">{initials}</span><span><strong>{identity.name}</strong><small>{identity.role[0]+identity.role.slice(1).toLowerCase()}</small></span><ChevronDown size={16} /></button><button className="icon logout" onClick={logout} title="Sign out"><LogOut /></button></div></header>;
+  return <header><button className="icon mobile-only" onClick={openMenu}><Menu /></button><div><small>{identity.role} PORTAL</small><h2>{page}</h2></div><div className="header-actions"><label className="search"><Search size={17} /><input placeholder="Search sections" onKeyDown={event => { if (event.key === 'Enter') search(event.currentTarget.value); }} /></label><span className={`live ${realtime}`} title="Authenticated automatic data refresh"><i /> {realtime === 'live' ? 'SYNCED' : realtime === 'connecting' ? 'CONNECTING' : 'OFFLINE'}</span><button className="icon" onClick={toggleDark} aria-label="Toggle theme">{dark ? <Sun /> : <Moon />}</button><button className="icon notification" onClick={() => window.alert('No new platform notifications.')} aria-label="Notifications"><Bell /><i /></button><button className="profile" onClick={() => permissions.has('Account Settings')?navigate('Settings','Account Settings'):navigate('Dashboard')}><span className="avatar">{initials}</span><span><strong>{identity.name}</strong><small>{identity.role[0]+identity.role.slice(1).toLowerCase()}</small></span><ChevronDown size={16} /></button><button className="icon logout" onClick={logout} title="Sign out"><LogOut /></button></div></header>;
 }
 
 function WorkspaceModal({tenants,currentId,close,saved}:{tenants:Tenant[];currentId?:string;close:()=>void;saved:(tenant:Tenant)=>Promise<void>}){
@@ -777,7 +777,8 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
       if(connectorResults.some(result=>result.status==='rejected'))failedKeys.push('connectors');
       setData(current=>({...current,...updates}));
       if (failedKeys.length) setLoadError(`Could not refresh ${failedKeys.map(key=>key.replace(/([A-Z])/g,' $1').toLowerCase()).join(', ')}. Existing data is still available; retry in a moment.`);
-    } catch (reason) { setLoadError(reason instanceof Error ? reason.message : 'Backend data could not be loaded'); }
+      setRealtime(failedKeys.length ? 'offline' : 'live');
+    } catch (reason) { setLoadError(reason instanceof Error ? reason.message : 'Backend data could not be loaded'); setRealtime('offline'); }
     finally { setLoading(false); }
   };
   const selectWorkspace=async(id:string)=>{if(id===selectedTenantId)return;setSelectedTenantId(id);localStorage.setItem('tekwatt-workspace-id',id);setData(current=>({...current,tenant:tenants.find(item=>item.id===id),chargers:[],connectors:[],sessions:[],payments:[],users:[],reports:[],notifications:[],supportTickets:[],stationReviews:[],bills:[],invoices:[],wallets:[],scanPayOrders:[],partners:[],technicians:[],rfidCards:[],maintenanceJobs:[],amcContracts:[],roles:[],administrators:[],adminApiKeys:[],governanceSettings:{},tariffs:[],tariffAssignments:[],modules:[],ocpiConfiguration:{},ocpiPartners:[],ocpiSummary:{partners:0,tokens:0,cdrs:0,commands:0}}));await refresh(false,id);};
@@ -787,12 +788,10 @@ function Portal({ logout, demo, identity }: { logout: () => void; demo: boolean;
   useEffect(() => {
     if (demo || !data.tenant) { setRealtime('offline'); return; }
     setRealtime('connecting');
-    const source = new EventSource(api.realtimeUrl(data.tenant.id));
-    source.addEventListener('connected', () => setRealtime('live'));
-    source.addEventListener('refresh', () => { setRealtime('live'); void refresh(true); });
-    source.onerror = () => setRealtime('connecting');
-    const fallback = window.setInterval(() => void refresh(true), 60_000);
-    return () => { source.close(); window.clearInterval(fallback); };
+    // Browser EventSource cannot attach the session header. Poll through the
+    // authenticated API client instead, so tenant data is never exposed anonymously.
+    const refreshTimer = window.setInterval(() => void refresh(true), 15_000);
+    return () => window.clearInterval(refreshTimer);
   }, [demo, data.tenant?.id,activeDataKeys]);
   const stationRows = demo ? stations : stationRowsFromChargers(data.chargers);
   const sessionRows = demo ? sessions : data.sessions.map(session => { const charger=data.chargers.find(item=>item.id===session.chargerId); return { id: session.transactionId || session.id, station: charger ? stationNameOf(charger) : 'Unknown charger', energy: `${session.energyKwh ?? 0} kWh`, amount: `${session.currency ?? 'INR'} ${session.totalCost ?? 0}`, status: session.status, time: session.startedAt ? new Date(session.startedAt).toLocaleString() : '—' }; });

@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class RecoveryAuthorizationTest {
     @Test void deniesPublicRecoveryAndRequiresInternalKey() {
-        var service=mock(ChargingSessionService.class);var controller=new ChargingSessionController(service);
+        var service=mock(ChargingSessionService.class);var controller=new ChargingSessionController(service,mock(com.tekwatt.session.service.CurrentCustomerSessionService.class));
         var id=UUID.randomUUID();var request=new ReconcileAvailableRequest(UUID.randomUUID(),UUID.randomUUID(),Instant.now());
         assertThrows(ResponseStatusException.class,()->controller.reconcileAvailable(id,"",request));
         ReflectionTestUtils.setField(controller,"recoveryKey","internal-test-key");

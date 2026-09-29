@@ -16,6 +16,8 @@ server:
 tekwatt:
   services:
     charger: ${CHARGER_SERVICE_URL:http://localhost:8083}
+    charging-session: ${CHARGING_SESSION_SERVICE_URL:http://localhost:8084}
+    auth: ${AUTH_SERVICE_URL:http://localhost:8081}
 management:
   endpoint:
     health:

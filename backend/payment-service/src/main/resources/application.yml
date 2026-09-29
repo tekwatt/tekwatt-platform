@@ -9,3 +9,6 @@ spring:
     hibernate.ddl-auto: validate
 server.port: ${SERVER_PORT:8092}
 management.endpoints.web.exposure.include: health,info
+tekwatt.services:
+  user: ${USER_SERVICE_URL:http://localhost:8082}
+  invoice: ${INVOICE_SERVICE_URL:http://localhost:8091}
